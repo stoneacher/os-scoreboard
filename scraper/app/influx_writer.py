@@ -6,7 +6,7 @@ from typing import Any
 from influxdb_client import InfluxDBClient, Point, WritePrecision
 from influxdb_client.client.write_api import SYNCHRONOUS
 
-from app.scoreboard import ScoreboardRow
+from app.scoreboard import QueueSnapshot, ScoreboardRow
 
 
 class InfluxWriter:
@@ -52,6 +52,18 @@ class InfluxWriter:
             point.field("error", error[:500])
         self.write_api.write(bucket=self.bucket, org=self.org, record=point)
 
+    def write_queue_snapshot(self, scrape_time: datetime, snapshot: QueueSnapshot) -> None:
+        point = (
+            Point("scoreboard_queue")
+            .field("running_count", snapshot.running_count)
+            .field("queued_count", snapshot.queued_count)
+            .field("active_count", snapshot.active_count)
+            .field("max_queue_position", snapshot.max_queue_position)
+            .field("max_queue_wait_minutes", float(snapshot.max_queue_wait_minutes))
+            .time(scrape_time, WritePrecision.NS)
+        )
+        self.write_api.write(bucket=self.bucket, org=self.org, record=point)
+
     def _row_to_point(self, row: ScoreboardRow) -> Point:
         point = (
             Point("team_scoreboard")
@@ -82,6 +94,11 @@ class InfluxWriter:
             "boot_ok": row.boot_ok,
             "page_date_raw": row.page_date_raw,
             "mrc_date_raw": row.mrc_date_raw,
+            "queue_raw": row.queue_raw,
+            "queue_state": row.queue_state,
+            "queue_running_percent": row.queue_running_percent,
+            "queue_position": row.queue_position,
+            "queue_wait_minutes": row.queue_wait_minutes,
         }
         for key, value in fields.items():
             if value is not None:

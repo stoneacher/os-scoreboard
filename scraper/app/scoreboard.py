@@ -32,6 +32,7 @@ EXPECTED_COLUMNS = {
     "page_date_raw",
     "mrc_date_raw",
     "submission1",
+    "queue_raw",
 }
 
 TEAM_ID_RE = re.compile(r"^[A-Z][0-9]+$", re.IGNORECASE)
@@ -73,6 +74,29 @@ class ScoreboardRow:
     page_date_raw: str | None
     mrc_date_raw: str | None
     submission1: str | None
+    queue_raw: str | None
+    queue_state: str | None
+    queue_running_percent: float | None
+    queue_position: int | None
+    queue_wait_minutes: float | None
+
+
+@dataclass(frozen=True)
+class QueueStatus:
+    raw: str | None
+    state: str | None
+    running_percent: float | None
+    position: int | None
+    wait_minutes: float | None
+
+
+@dataclass(frozen=True)
+class QueueSnapshot:
+    running_count: int
+    queued_count: int
+    active_count: int
+    max_queue_position: int
+    max_queue_wait_minutes: float
 
 
 def fetch_scoreboard_html(
@@ -239,8 +263,8 @@ def _normalize_column_name(value: str) -> str:
         "submissioni1": "submission1",
         "submissionl1": "submission1",
         "tagged": "submission1",
-        "q": "_skip",
-        "queued": "_skip",
+        "q": "queue_raw",
+        "queued": "queue_raw",
     }
     if compact in aliases:
         return aliases[compact]
@@ -257,6 +281,7 @@ def _normalize_column_name(value: str) -> str:
 
 def normalize_row(row: dict[str, Any], scrape_time: datetime) -> ScoreboardRow:
     team = parse_team_label(row.get("group"))
+    queue = parse_queue_status(row.get("queue_raw"))
     return ScoreboardRow(
         scrape_time=scrape_time,
         rank=parse_int(row.get("rank")),
@@ -280,6 +305,11 @@ def normalize_row(row: dict[str, Any], scrape_time: datetime) -> ScoreboardRow:
         page_date_raw=empty_to_none(row.get("page_date_raw")),
         mrc_date_raw=empty_to_none(row.get("mrc_date_raw")),
         submission1=empty_to_none(row.get("submission1")),
+        queue_raw=queue.raw,
+        queue_state=queue.state,
+        queue_running_percent=queue.running_percent,
+        queue_position=queue.position,
+        queue_wait_minutes=queue.wait_minutes,
     )
 
 
@@ -328,6 +358,68 @@ def parse_status_bool(value: Any) -> bool | None:
     return None
 
 
+def parse_queue_status(value: Any) -> QueueStatus:
+    raw = empty_to_none(value)
+    if raw is None:
+        return QueueStatus(None, None, None, None, None)
+
+    running_percent = parse_percentage(raw)
+    if running_percent is not None and "%" in raw:
+        return QueueStatus(raw, "running", running_percent, None, None)
+
+    position_match = re.search(r"\b(?P<position>\d+)\b", raw)
+    wait_minutes = parse_queue_wait_minutes(raw)
+    if position_match:
+        return QueueStatus(
+            raw=raw,
+            state="queued",
+            running_percent=None,
+            position=int(position_match.group("position")),
+            wait_minutes=wait_minutes,
+        )
+
+    return QueueStatus(raw, "unknown", None, None, wait_minutes)
+
+
+def parse_queue_wait_minutes(value: Any) -> float | None:
+    text = clean_text(value).lower()
+    if not text:
+        return None
+
+    total_minutes = 0.0
+    matched = False
+
+    hours_match = re.search(r"(\d+(?:[.,]\d+)?)\s*h", text)
+    if hours_match:
+        total_minutes += float(hours_match.group(1).replace(",", ".")) * 60
+        matched = True
+
+    minutes_match = re.search(r"(\d+(?:[.,]\d+)?)\s*min", text)
+    if minutes_match:
+        total_minutes += float(minutes_match.group(1).replace(",", "."))
+        matched = True
+
+    return total_minutes if matched else None
+
+
+def build_queue_snapshot(rows: list[ScoreboardRow]) -> QueueSnapshot:
+    running_count = sum(1 for row in rows if row.queue_state == "running")
+    queued_rows = [row for row in rows if row.queue_state == "queued"]
+    queued_count = len(queued_rows)
+    max_queue_position = max((row.queue_position or 0 for row in queued_rows), default=0)
+    max_queue_wait_minutes = max(
+        (row.queue_wait_minutes or 0.0 for row in queued_rows),
+        default=0.0,
+    )
+    return QueueSnapshot(
+        running_count=running_count,
+        queued_count=queued_count,
+        active_count=running_count + queued_count,
+        max_queue_position=max_queue_position,
+        max_queue_wait_minutes=max_queue_wait_minutes,
+    )
+
+
 def clean_text(value: Any) -> str:
     if value is None:
         return ""
@@ -337,7 +429,9 @@ def clean_text(value: Any) -> str:
 
 def empty_to_none(value: Any) -> str | None:
     text = clean_text(value)
-    return text if text else None
+    if not text or text.lower() in {"nan", "none", "-"}:
+        return None
+    return text
 
 
 def snapshot_hash(rows: list[ScoreboardRow]) -> str:

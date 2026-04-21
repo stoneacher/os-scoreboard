@@ -5,8 +5,10 @@ from pathlib import Path
 
 from app.scoreboard import (
     _normalize_column_name,
+    build_queue_snapshot,
     normalize_row,
     parse_percentage,
+    parse_queue_status,
     parse_scoreboard_html,
     parse_status_bool,
     parse_team_label,
@@ -27,11 +29,26 @@ def test_bool_status_parsing() -> None:
     assert parse_status_bool("unknown") is None
 
 
+def test_queue_status_parsing() -> None:
+    running = parse_queue_status("37%")
+    assert running.state == "running"
+    assert running.running_percent == 37.0
+    assert running.position is None
+    assert running.wait_minutes is None
+
+    queued = parse_queue_status("3 (32 min.)")
+    assert queued.state == "queued"
+    assert queued.running_percent is None
+    assert queued.position == 3
+    assert queued.wait_minutes == 32.0
+
+
 def test_column_normalization() -> None:
     assert _normalize_column_name("#") == "rank"
     assert _normalize_column_name("5d Avg.") == "avg_5d"
     assert _normalize_column_name("Fork / Exec") == "fork_exec"
     assert _normalize_column_name("SubmissionI1") == "submission1"
+    assert _normalize_column_name("Q") == "queue_raw"
     assert _normalize_column_name("➙") == "_skip"
 
 
@@ -85,6 +102,7 @@ def test_row_normalization() -> None:
             "page_date_raw": "20.04. 19:30",
             "mrc_date_raw": "20.04. 19:21",
             "submission1": "FAIL",
+            "queue_raw": "3 (32 min.)",
         },
         scrape_time,
     )
@@ -95,6 +113,9 @@ def test_row_normalization() -> None:
     assert row.boot_ok is False
     assert row.score == 92.6
     assert row.up_count == 42
+    assert row.queue_state == "queued"
+    assert row.queue_position == 3
+    assert row.queue_wait_minutes == 32.0
 
 
 def test_html_parsing_fixture() -> None:
@@ -104,7 +125,17 @@ def test_html_parsing_fixture() -> None:
     assert len(rows) == 2
     assert rows[0].team_id == "B2"
     assert rows[0].score == 92.6
+    assert rows[0].queue_state == "running"
+    assert rows[0].queue_running_percent == 37.0
     assert all(row.visibility_mode != "anonymous" for row in rows)
     assert rows[1].visibility_mode == "id_only"
     assert rows[1].score is None
+    assert rows[1].queue_state == "queued"
+    assert rows[1].queue_position == 3
+    assert rows[1].queue_wait_minutes == 32.0
+    queue_snapshot = build_queue_snapshot(rows)
+    assert queue_snapshot.running_count == 1
+    assert queue_snapshot.queued_count == 1
+    assert queue_snapshot.max_queue_position == 3
+    assert queue_snapshot.max_queue_wait_minutes == 32.0
     assert len(snapshot_hash(rows)) == 64

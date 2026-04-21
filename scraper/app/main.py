@@ -13,7 +13,12 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from app.config import Settings, load_settings
 from app.influx_writer import InfluxWriter
 from app.logging_config import configure_logging
-from app.scoreboard import fetch_scoreboard_html, parse_scoreboard_html, snapshot_hash
+from app.scoreboard import (
+    build_queue_snapshot,
+    fetch_scoreboard_html,
+    parse_scoreboard_html,
+    snapshot_hash,
+)
 
 LOGGER = logging.getLogger(__name__)
 
@@ -147,11 +152,14 @@ def run_once(
             settings.http_user_agent,
         )
         rows = parse_scoreboard_html(html, scrape_time)
+        queue_snapshot = build_queue_snapshot(rows)
         current_hash = snapshot_hash(rows)
         duration = time.monotonic() - started
 
         skipped = settings.skip_identical_snapshots and current_hash == previous_hash
         rows_written = 0 if skipped else writer.write_rows(rows)
+        if not skipped:
+            writer.write_queue_snapshot(scrape_time, queue_snapshot)
         writer.write_health(
             scrape_time=scrape_time,
             ok=True,
@@ -176,6 +184,10 @@ def run_once(
                 "rows_written": rows_written,
                 "snapshot_hash": current_hash,
                 "skipped_identical": skipped,
+                "running_count": queue_snapshot.running_count,
+                "queued_count": queue_snapshot.queued_count,
+                "max_queue_position": queue_snapshot.max_queue_position,
+                "max_queue_wait_minutes": queue_snapshot.max_queue_wait_minutes,
             },
         )
         return current_hash
