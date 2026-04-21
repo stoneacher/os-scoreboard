@@ -1,5 +1,5 @@
 COMPOSE ?= docker compose
-SCRAPER_IMAGE ?= uni-scoreboard-monitor-scraper-test
+SCRAPER_IMAGE ?= sweb-scoreboard-monitor-scraper-test
 
 .PHONY: up down restart ps logs logs-scraper logs-grafana logs-influx test build
 

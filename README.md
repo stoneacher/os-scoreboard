@@ -1,1 +1,1 @@
-# os-scoreboard-test
+# sweb-scoreboard-monitor

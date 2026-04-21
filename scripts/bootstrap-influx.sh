@@ -2,7 +2,7 @@
 set -eu
 
 INFLUX_URL="${INFLUX_URL:-http://localhost:8086}"
-INFLUX_ORG="${INFLUX_ORG:-uni-scoreboard}"
+INFLUX_ORG="${INFLUX_ORG:-sweb-scoreboard}"
 INFLUX_BUCKET="${INFLUX_BUCKET:-scoreboard}"
 INFLUX_TOKEN="${INFLUX_TOKEN:-}"
 

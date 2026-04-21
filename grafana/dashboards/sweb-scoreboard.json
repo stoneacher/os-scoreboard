@@ -457,8 +457,8 @@
   },
   "timepicker": {},
   "timezone": "browser",
-  "title": "Uni Scoreboard Monitor",
-  "uid": "uni-scoreboard-monitor",
+  "title": "Sweb Scoreboard Monitor",
+  "uid": "sweb-scoreboard-monitor",
   "version": 1,
   "weekStart": ""
 }

@@ -3,59 +3,62 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass
 
-
-def _bool_env(name: str, default: bool) -> bool:
-    value = os.getenv(name)
-    if value is None:
-        return default
-    return value.strip().lower() in {"1", "true", "yes", "on"}
-
-
-def _int_env(name: str, default: int) -> int:
+def _required_env(name: str) -> str:
     value = os.getenv(name)
     if value is None or value.strip() == "":
-        return default
-    return int(value)
+        raise ValueError(f"missing required environment variable: {name}")
+    return value.strip()
+
+
+def _bool_env(name: str) -> bool:
+    value = _required_env(name).lower()
+    if value in {"1", "true", "yes", "on"}:
+        return True
+    if value in {"0", "false", "no", "off"}:
+        return False
+    raise ValueError(f"invalid boolean value for {name}: {value}")
+
+
+def _int_env(name: str) -> int:
+    value = _required_env(name)
+    try:
+        return int(value)
+    except ValueError as exc:
+        raise ValueError(f"invalid integer value for {name}: {value}") from exc
 
 
 @dataclass(frozen=True)
 class Settings:
-    scoreboard_url: str = "https://sweb.student.isec.tugraz.at/index.php"
-    scrape_interval_seconds: int = 300
-    http_timeout_seconds: int = 20
-    http_user_agent: str = "uni-scoreboard-monitor/1.0"
-    influx_url: str = "http://influxdb:8086"
-    influx_token: str = "change-this-long-random-token-before-deploying"
-    influx_org: str = "uni-scoreboard"
-    influx_bucket: str = "scoreboard"
-    log_level: str = "INFO"
-    save_failed_html: bool = True
-    skip_identical_snapshots: bool = False
-    failed_html_dir: str = "/app/failed_html"
-    health_host: str = "0.0.0.0"
-    health_port: int = 8000
+    scoreboard_url: str
+    scrape_interval_seconds: int
+    http_timeout_seconds: int
+    http_user_agent: str
+    influx_url: str
+    influx_token: str
+    influx_org: str
+    influx_bucket: str
+    log_level: str
+    save_failed_html: bool
+    skip_identical_snapshots: bool
+    failed_html_dir: str
+    health_host: str
+    health_port: int
 
 
 def load_settings() -> Settings:
     return Settings(
-        scoreboard_url=os.getenv("SCOREBOARD_URL", Settings.scoreboard_url),
-        scrape_interval_seconds=_int_env(
-            "SCRAPE_INTERVAL_SECONDS", Settings.scrape_interval_seconds
-        ),
-        http_timeout_seconds=_int_env(
-            "HTTP_TIMEOUT_SECONDS", Settings.http_timeout_seconds
-        ),
-        http_user_agent=os.getenv("HTTP_USER_AGENT", Settings.http_user_agent),
-        influx_url=os.getenv("INFLUX_URL", Settings.influx_url),
-        influx_token=os.getenv("INFLUX_TOKEN", Settings.influx_token),
-        influx_org=os.getenv("INFLUX_ORG", Settings.influx_org),
-        influx_bucket=os.getenv("INFLUX_BUCKET", Settings.influx_bucket),
-        log_level=os.getenv("LOG_LEVEL", Settings.log_level),
-        save_failed_html=_bool_env("SAVE_FAILED_HTML", Settings.save_failed_html),
-        skip_identical_snapshots=_bool_env(
-            "SKIP_IDENTICAL_SNAPSHOTS", Settings.skip_identical_snapshots
-        ),
-        failed_html_dir=os.getenv("FAILED_HTML_DIR", Settings.failed_html_dir),
-        health_host=os.getenv("HEALTH_HOST", Settings.health_host),
-        health_port=_int_env("HEALTH_PORT", Settings.health_port),
+        scoreboard_url=_required_env("SCOREBOARD_URL"),
+        scrape_interval_seconds=_int_env("SCRAPE_INTERVAL_SECONDS"),
+        http_timeout_seconds=_int_env("HTTP_TIMEOUT_SECONDS"),
+        http_user_agent=_required_env("HTTP_USER_AGENT"),
+        influx_url=_required_env("INFLUX_URL"),
+        influx_token=_required_env("INFLUX_TOKEN"),
+        influx_org=_required_env("INFLUX_ORG"),
+        influx_bucket=_required_env("INFLUX_BUCKET"),
+        log_level=_required_env("LOG_LEVEL"),
+        save_failed_html=_bool_env("SAVE_FAILED_HTML"),
+        skip_identical_snapshots=_bool_env("SKIP_IDENTICAL_SNAPSHOTS"),
+        failed_html_dir=_required_env("FAILED_HTML_DIR"),
+        health_host=_required_env("HEALTH_HOST"),
+        health_port=_int_env("HEALTH_PORT"),
     )
