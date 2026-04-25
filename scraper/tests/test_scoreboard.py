@@ -48,6 +48,10 @@ def test_column_normalization() -> None:
     assert _normalize_column_name("5d Avg.") == "avg_5d"
     assert _normalize_column_name("Fork / Exec") == "fork_exec"
     assert _normalize_column_name("SubmissionI1") == "submission1"
+    assert _normalize_column_name("SubmissionD2") == "submission1"
+    assert _normalize_column_name("SubmissionI2") == "submission1"
+    assert _normalize_column_name("SubmissionS1") == "submission1"
+    assert _normalize_column_name("SubmissionS2") == "submission1"
     assert _normalize_column_name("Q") == "queue_raw"
     assert _normalize_column_name("➙") == "_skip"
 

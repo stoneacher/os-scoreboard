@@ -38,6 +38,25 @@ EXPECTED_COLUMNS = {
 TEAM_ID_RE = re.compile(r"^[A-Z][0-9]+$", re.IGNORECASE)
 NAMED_TEAM_RE = re.compile(r"^(?P<name>.*?)\s*\((?P<team_id>[A-Z][0-9]+)\)\s*$", re.I)
 
+_SUBMISSION_TYPE_NAMES: dict[str, str] = {
+    "submissioni1": "SubmissionI1",
+    "submissionl1": "SubmissionI1",
+    "submissiond2": "SubmissionD2",
+    "submissioni2": "SubmissionI2",
+    "submissions1": "SubmissionS1",
+    "submissions2": "SubmissionS2",
+}
+
+
+def _detect_submission_type(original_headers: list[str]) -> str | None:
+    for header in original_headers:
+        compact = re.sub(r"[^a-z0-9#]+", "", clean_text(header).lower())
+        if compact in _SUBMISSION_TYPE_NAMES:
+            return _SUBMISSION_TYPE_NAMES[compact]
+        if "submission" in compact:
+            return clean_text(header)
+    return None
+
 
 @dataclass(frozen=True)
 class TeamIdentity:
@@ -74,6 +93,7 @@ class ScoreboardRow:
     page_date_raw: str | None
     mrc_date_raw: str | None
     submission1: str | None
+    submission_type: str | None
     queue_raw: str | None
     queue_state: str | None
     queue_running_percent: float | None
@@ -153,6 +173,7 @@ def _rows_from_pandas(html: str) -> list[dict[str, Any]] | None:
     if best is None or best[0] < 4:
         return None
 
+    submission_type = _detect_submission_type([str(col) for col in best[1].columns])
     table = best[1].copy()
     table.columns = [_normalize_column_name(str(col)) for col in table.columns]
     table = table.loc[:, [col != "_skip" for col in table.columns]]
@@ -165,6 +186,8 @@ def _rows_from_pandas(html: str) -> list[dict[str, Any]] | None:
             for key, value in record.to_dict().items()
             if str(key) in EXPECTED_COLUMNS
         }
+        if submission_type:
+            row["submission_type"] = submission_type
         if row:
             rows.append(row)
     return rows
@@ -178,21 +201,25 @@ def _rows_from_beautifulsoup(html: str) -> list[dict[str, Any]]:
 
     best_table = None
     best_headers: list[str] = []
+    best_header_texts: list[str] = []
     best_score = -1
     for table in tables:
         header_cells = table.find_all("th")
-        headers = [_normalize_column_name(cell.get_text(" ", strip=True)) for cell in header_cells]
+        header_texts = [cell.get_text(" ", strip=True) for cell in header_cells]
+        headers = [_normalize_column_name(t) for t in header_texts]
         score = len(EXPECTED_COLUMNS.intersection(headers))
         if table.get("id") == "highscore":
             score += 5
         if score > best_score:
             best_table = table
             best_headers = headers
+            best_header_texts = header_texts
             best_score = score
 
     if best_table is None or best_score < 4:
         raise ValueError("could not identify the standings table")
 
+    submission_type = _detect_submission_type(best_header_texts)
     header_pairs = [
         (idx, name)
         for idx, name in enumerate(best_headers)
@@ -213,6 +240,8 @@ def _rows_from_beautifulsoup(html: str) -> list[dict[str, Any]]:
             if key == "_skip":
                 continue
             row[key] = clean_text(cells[cell_idx].get_text(" ", strip=True))
+        if submission_type:
+            row["submission_type"] = submission_type
         if row:
             rows.append(row)
     return rows
@@ -262,6 +291,10 @@ def _normalize_column_name(value: str) -> str:
         "submission1": "submission1",
         "submissioni1": "submission1",
         "submissionl1": "submission1",
+        "submissiond2": "submission1",
+        "submissioni2": "submission1",
+        "submissions1": "submission1",
+        "submissions2": "submission1",
         "tagged": "submission1",
         "q": "queue_raw",
         "queued": "queue_raw",
@@ -305,6 +338,7 @@ def normalize_row(row: dict[str, Any], scrape_time: datetime) -> ScoreboardRow:
         page_date_raw=empty_to_none(row.get("page_date_raw")),
         mrc_date_raw=empty_to_none(row.get("mrc_date_raw")),
         submission1=empty_to_none(row.get("submission1")),
+        submission_type=row.get("submission_type"),
         queue_raw=queue.raw,
         queue_state=queue.state,
         queue_running_percent=queue.running_percent,

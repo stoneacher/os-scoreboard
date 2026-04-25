@@ -75,6 +75,8 @@ class InfluxWriter:
             point.tag("team_id", row.team_id)
         if row.submission1 and len(row.submission1) <= 64:
             point.tag("submission1", row.submission1)
+        if row.submission_type and len(row.submission_type) <= 64:
+            point.tag("submission_type", row.submission_type)
 
         fields: dict[str, Any] = {
             "team_label": row.team_label,
