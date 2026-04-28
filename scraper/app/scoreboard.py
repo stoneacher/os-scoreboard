@@ -37,6 +37,7 @@ EXPECTED_COLUMNS = {
 
 TEAM_ID_RE = re.compile(r"^[A-Z][0-9]+$", re.IGNORECASE)
 NAMED_TEAM_RE = re.compile(r"^(?P<name>.*?)\s*\((?P<team_id>[A-Z][0-9]+)\)\s*$", re.I)
+NAMED_TEAM_NO_PARENS_RE = re.compile(r"^(?P<name>.+?)\s+(?P<team_id>[A-Z][0-9]+)\s*$", re.I)
 
 _SUBMISSION_TYPE_NAMES: dict[str, str] = {
     "submissioni1": "SubmissionI1",
@@ -352,7 +353,7 @@ def parse_team_label(value: Any) -> TeamIdentity:
     if label == "???":
         return TeamIdentity(label, None, None, "anonymous", True, False, "???")
 
-    named = NAMED_TEAM_RE.match(label)
+    named = NAMED_TEAM_RE.match(label) or NAMED_TEAM_NO_PARENS_RE.match(label)
     if named:
         team_name = clean_text(named.group("name")) or None
         team_id = named.group("team_id").upper()
