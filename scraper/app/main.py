@@ -14,6 +14,7 @@ from app.config import Settings, load_settings
 from app.influx_writer import InfluxWriter
 from app.logging_config import configure_logging
 from app.scoreboard import (
+    ScoreboardRow,
     build_queue_snapshot,
     fetch_scoreboard_html,
     parse_scoreboard_html,
@@ -138,7 +139,8 @@ def run_once(
     writer: InfluxWriter,
     state: HealthState,
     previous_row_hashes: dict[str, str],
-) -> dict[str, str]:
+    last_written_times: dict[str, datetime],
+) -> tuple[dict[str, str], dict[str, datetime]]:
     scrape_time = datetime.now(timezone.utc)
     started = time.monotonic()
     html: str | None = None
@@ -159,12 +161,16 @@ def run_once(
         duration = time.monotonic() - started
 
         if settings.skip_identical_snapshots:
-            rows_to_write = [
-                r for r in rows if new_row_hashes[r.display_name] != previous_row_hashes.get(r.display_name)
-            ]
+            def _needs_write(r: ScoreboardRow) -> bool:
+                if new_row_hashes[r.display_name] != previous_row_hashes.get(r.display_name):
+                    return True
+                last = last_written_times.get(r.display_name)
+                return last is None or (scrape_time - last).total_seconds() >= settings.heartbeat_interval_seconds
+            rows_to_write = [r for r in rows if _needs_write(r)]
         else:
             rows_to_write = rows
 
+        new_last_written = {**last_written_times, **{r.display_name: scrape_time for r in rows_to_write}}
         rows_written = writer.write_rows(rows_to_write)
         skipped_identical = rows_written == 0 and bool(previous_row_hashes)
         if rows_to_write:
@@ -199,7 +205,7 @@ def run_once(
                 "max_queue_wait_minutes": queue_snapshot.max_queue_wait_minutes,
             },
         )
-        return new_row_hashes
+        return new_row_hashes, new_last_written
     except Exception as exc:
         duration = time.monotonic() - started
         failed_path = save_failed_html(settings, html, scrape_time) if html else None
@@ -225,7 +231,7 @@ def run_once(
             state.last_error = str(exc)
             state.rows_parsed = 0
             state.rows_written = 0
-        return previous_row_hashes
+        return previous_row_hashes, last_written_times
 
 
 def main() -> None:
@@ -248,9 +254,10 @@ def main() -> None:
         settings.influx_bucket,
     )
     previous_row_hashes: dict[str, str] = {}
+    last_written_times: dict[str, datetime] = {}
     try:
         while not stop_event.is_set():
-            previous_row_hashes = run_once(settings, writer, state, previous_row_hashes)
+            previous_row_hashes, last_written_times = run_once(settings, writer, state, previous_row_hashes, last_written_times)
             stop_event.wait(settings.scrape_interval_seconds)
     finally:
         writer.close()
