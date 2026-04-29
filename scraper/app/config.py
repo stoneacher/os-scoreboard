@@ -27,6 +27,16 @@ def _int_env(name: str) -> int:
         raise ValueError(f"invalid integer value for {name}: {value}") from exc
 
 
+def _optional_int_env(name: str, default: int) -> int:
+    value = os.getenv(name)
+    if value is None or value.strip() == "":
+        return default
+    try:
+        return int(value.strip())
+    except ValueError as exc:
+        raise ValueError(f"invalid integer value for {name}: {value}") from exc
+
+
 @dataclass(frozen=True)
 class Settings:
     scoreboard_url: str
@@ -40,6 +50,7 @@ class Settings:
     log_level: str
     save_failed_html: bool
     skip_identical_snapshots: bool
+    heartbeat_interval_seconds: int
     failed_html_dir: str
     health_host: str
     health_port: int
@@ -58,6 +69,7 @@ def load_settings() -> Settings:
         log_level=_required_env("LOG_LEVEL"),
         save_failed_html=_bool_env("SAVE_FAILED_HTML"),
         skip_identical_snapshots=_bool_env("SKIP_IDENTICAL_SNAPSHOTS"),
+        heartbeat_interval_seconds=_optional_int_env("HEARTBEAT_INTERVAL_SECONDS", 3600),
         failed_html_dir=_required_env("FAILED_HTML_DIR"),
         health_host=_required_env("HEALTH_HOST"),
         health_port=_int_env("HEALTH_PORT"),
