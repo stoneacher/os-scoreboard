@@ -469,6 +469,13 @@ def empty_to_none(value: Any) -> str | None:
     return text
 
 
+def row_hash(row: ScoreboardRow) -> str:
+    item = asdict(row)
+    item.pop("scrape_time", None)
+    encoded = json.dumps(item, sort_keys=True, default=str, separators=(",", ":"))
+    return hashlib.sha256(encoded.encode("utf-8")).hexdigest()
+
+
 def snapshot_hash(rows: list[ScoreboardRow]) -> str:
     payload = []
     for row in rows:

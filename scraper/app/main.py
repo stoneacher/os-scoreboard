@@ -17,6 +17,7 @@ from app.scoreboard import (
     build_queue_snapshot,
     fetch_scoreboard_html,
     parse_scoreboard_html,
+    row_hash,
     snapshot_hash,
 )
 
@@ -136,8 +137,8 @@ def run_once(
     settings: Settings,
     writer: InfluxWriter,
     state: HealthState,
-    previous_hash: str | None,
-) -> str | None:
+    previous_row_hashes: dict[str, str],
+) -> dict[str, str]:
     scrape_time = datetime.now(timezone.utc)
     started = time.monotonic()
     html: str | None = None
@@ -154,11 +155,19 @@ def run_once(
         rows = parse_scoreboard_html(html, scrape_time)
         queue_snapshot = build_queue_snapshot(rows)
         current_hash = snapshot_hash(rows)
+        new_row_hashes = {r.display_name: row_hash(r) for r in rows}
         duration = time.monotonic() - started
 
-        skipped = settings.skip_identical_snapshots and current_hash == previous_hash
-        rows_written = 0 if skipped else writer.write_rows(rows)
-        if not skipped:
+        if settings.skip_identical_snapshots:
+            rows_to_write = [
+                r for r in rows if new_row_hashes[r.display_name] != previous_row_hashes.get(r.display_name)
+            ]
+        else:
+            rows_to_write = rows
+
+        rows_written = writer.write_rows(rows_to_write)
+        skipped_identical = rows_written == 0 and bool(previous_row_hashes)
+        if rows_to_write:
             writer.write_queue_snapshot(scrape_time, queue_snapshot)
         writer.write_health(
             scrape_time=scrape_time,
@@ -167,7 +176,7 @@ def run_once(
             rows_parsed=len(rows),
             rows_written=rows_written,
             snapshot_hash=current_hash,
-            skipped_identical=skipped,
+            skipped_identical=skipped_identical,
         )
         with state.lock:
             state.last_success_at = scrape_time
@@ -183,14 +192,14 @@ def run_once(
                 "rows_parsed": len(rows),
                 "rows_written": rows_written,
                 "snapshot_hash": current_hash,
-                "skipped_identical": skipped,
+                "skipped_identical": skipped_identical,
                 "running_count": queue_snapshot.running_count,
                 "queued_count": queue_snapshot.queued_count,
                 "max_queue_position": queue_snapshot.max_queue_position,
                 "max_queue_wait_minutes": queue_snapshot.max_queue_wait_minutes,
             },
         )
-        return current_hash
+        return new_row_hashes
     except Exception as exc:
         duration = time.monotonic() - started
         failed_path = save_failed_html(settings, html, scrape_time) if html else None
@@ -216,7 +225,7 @@ def run_once(
             state.last_error = str(exc)
             state.rows_parsed = 0
             state.rows_written = 0
-        return previous_hash
+        return previous_row_hashes
 
 
 def main() -> None:
@@ -238,10 +247,10 @@ def main() -> None:
         settings.influx_org,
         settings.influx_bucket,
     )
-    previous_hash: str | None = None
+    previous_row_hashes: dict[str, str] = {}
     try:
         while not stop_event.is_set():
-            previous_hash = run_once(settings, writer, state, previous_hash)
+            previous_row_hashes = run_once(settings, writer, state, previous_row_hashes)
             stop_event.wait(settings.scrape_interval_seconds)
     finally:
         writer.close()
