@@ -211,3 +211,4 @@ __marimo__/
 *.html
 
 internal_notes.md
+*local.yml
