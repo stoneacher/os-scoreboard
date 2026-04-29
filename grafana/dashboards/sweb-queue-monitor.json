@@ -17,7 +17,7 @@
   },
   "editable": true,
   "fiscalYearStartMonth": 0,
-  "graphTooltip": 0,
+  "graphTooltip": 1,
   "id": 6,
   "links": [],
   "panels": [
@@ -32,6 +32,7 @@
             "mode": "thresholds"
           },
           "mappings": [],
+          "noValue": "no tests running",
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -44,7 +45,7 @@
               },
               {
                 "color": "red",
-                "value": 6
+                "value": 5
               }
             ]
           },
@@ -53,7 +54,7 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 4,
+        "h": 3,
         "w": 6,
         "x": 0,
         "y": 0
@@ -61,7 +62,7 @@
       "id": 1,
       "options": {
         "colorMode": "value",
-        "graphMode": "none",
+        "graphMode": "area",
         "justifyMode": "auto",
         "orientation": "auto",
         "percentChangeColorMode": "standard",
@@ -135,7 +136,7 @@
         ]
       },
       "gridPos": {
-        "h": 4,
+        "h": 3,
         "w": 6,
         "x": 6,
         "y": 0
@@ -143,7 +144,7 @@
       "id": 2,
       "options": {
         "colorMode": "value",
-        "graphMode": "none",
+        "graphMode": "area",
         "justifyMode": "auto",
         "orientation": "auto",
         "percentChangeColorMode": "standard",
@@ -191,11 +192,11 @@
               },
               {
                 "color": "yellow",
-                "value": 10
+                "value": 5
               },
               {
                 "color": "red",
-                "value": 30
+                "value": 15
               }
             ]
           },
@@ -204,7 +205,7 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 4,
+        "h": 3,
         "w": 6,
         "x": 12,
         "y": 0
@@ -212,7 +213,7 @@
       "id": 3,
       "options": {
         "colorMode": "value",
-        "graphMode": "none",
+        "graphMode": "area",
         "justifyMode": "auto",
         "orientation": "auto",
         "percentChangeColorMode": "standard",
@@ -260,28 +261,28 @@
               },
               {
                 "color": "yellow",
-                "value": 1
+                "value": 600
               },
               {
                 "color": "red",
-                "value": 4
+                "value": 1200
               }
             ]
           },
-          "unit": "none"
+          "unit": "s"
         },
         "overrides": []
       },
       "gridPos": {
-        "h": 4,
+        "h": 3,
         "w": 6,
         "x": 18,
         "y": 0
       },
-      "id": 4,
+      "id": 10,
       "options": {
         "colorMode": "value",
-        "graphMode": "none",
+        "graphMode": "area",
         "justifyMode": "auto",
         "orientation": "auto",
         "percentChangeColorMode": "standard",
@@ -293,7 +294,7 @@
           "values": false
         },
         "showPercentChange": false,
-        "textMode": "value",
+        "textMode": "auto",
         "wideLayout": true
       },
       "pluginVersion": "11.6.0",
@@ -303,11 +304,11 @@
             "type": "influxdb",
             "uid": "influxdb"
           },
-          "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"scoreboard_queue\" and r._field == \"max_queue_position\")\n  |> group()\n  |> last()",
+          "query": "from(bucket: \"${bucket}\")\n  |> range(start: -7d)\n  |> filter(fn: (r) => r._measurement == \"scraper_health\" and r._field == \"rows_parsed\")\n  |> group()\n  |> last()\n  |> map(fn: (r) => ({_time: now(), _value: float(v: uint(v: now()) - uint(v: r._time)) / 1000000000.0, _field: \"last_scrape_age_seconds\"}))",
           "refId": "A"
         }
       ],
-      "title": "Max Queue Position Now",
+      "title": "Last Scrape Age",
       "type": "stat"
     },
     {
@@ -315,6 +316,7 @@
         "type": "influxdb",
         "uid": "influxdb"
       },
+      "description": "Queue and running test stacked version",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -347,7 +349,7 @@
             "spanNulls": false,
             "stacking": {
               "group": "A",
-              "mode": "none"
+              "mode": "normal"
             },
             "thresholdsStyle": {
               "mode": "off"
@@ -370,9 +372,9 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 4
+        "y": 3
       },
-      "id": 5,
+      "id": 11,
       "options": {
         "legend": {
           "calcs": [
@@ -396,7 +398,7 @@
             "type": "influxdb",
             "uid": "influxdb"
           },
-          "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"scoreboard_queue\")\n  |> filter(fn: (r) => r._field == \"running_count\" or r._field == \"queued_count\" or r._field == \"active_count\")\n  |> group(columns: [\"_field\"])\n  |> aggregateWindow(every: v.windowPeriod, fn: last, createEmpty: false)\n  |> map(fn: (r) => ({r with _field: if r._field == \"running_count\" then \"Running tests\" else if r._field == \"queued_count\" then \"Queued teams\" else \"Active queue rows\"}))\n  |> keep(columns: [\"_time\", \"_value\", \"_field\"])\n  |> group(columns: [\"_field\"])",
+          "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"scoreboard_queue\")\n  |> filter(fn: (r) => r._field == \"running_count\" or r._field == \"queued_count\")\n  |> group(columns: [\"_field\"])\n  |> aggregateWindow(every: v.windowPeriod, fn: last, createEmpty: true)\n  |> fill(usePrevious: true)\n  |> map(fn: (r) => ({r with _field: if r._field == \"running_count\" then \"Running tests\" else \"Queued teams\"}))\n  |> keep(columns: [\"_time\", \"_value\", \"_field\"])\n  |> group(columns: [\"_field\"])",
           "refId": "A"
         }
       ],
@@ -480,7 +482,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 4
+        "y": 3
       },
       "id": 6,
       "options": {
@@ -506,7 +508,7 @@
             "type": "influxdb",
             "uid": "influxdb"
           },
-          "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"scoreboard_queue\")\n  |> filter(fn: (r) => r._field == \"max_queue_wait_minutes\" or r._field == \"max_queue_position\")\n  |> group(columns: [\"_field\"])\n  |> aggregateWindow(every: v.windowPeriod, fn: last, createEmpty: false)\n  |> map(fn: (r) => ({r with _field: if r._field == \"max_queue_wait_minutes\" then \"Max queue wait\" else \"Max queue position\"}))\n  |> keep(columns: [\"_time\", \"_value\", \"_field\"])\n  |> group(columns: [\"_field\"])",
+          "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"scoreboard_queue\")\n  |> filter(fn: (r) => r._field == \"max_queue_wait_minutes\" or r._field == \"max_queue_position\")\n  |> group(columns: [\"_field\"])\n  |> aggregateWindow(every: v.windowPeriod, fn: last, createEmpty: true)\n  |> fill(usePrevious: true)\n  |> map(fn: (r) => ({r with _field: if r._field == \"max_queue_wait_minutes\" then \"Max queue wait\" else \"Max queue position\"}))\n  |> keep(columns: [\"_time\", \"_value\", \"_field\"])\n  |> group(columns: [\"_field\"])",
           "refId": "A"
         }
       ],
@@ -539,7 +541,7 @@
               "tooltip": false,
               "viz": false
             },
-            "insertNulls": false,
+            "insertNulls": 90000,
             "lineInterpolation": "linear",
             "lineWidth": 2,
             "pointSize": 3,
@@ -573,7 +575,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 12
+        "y": 11
       },
       "id": 7,
       "options": {
@@ -631,7 +633,7 @@
               "tooltip": false,
               "viz": false
             },
-            "insertNulls": false,
+            "insertNulls": 300000,
             "lineInterpolation": "linear",
             "lineWidth": 2,
             "pointSize": 3,
@@ -681,7 +683,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 12
+        "y": 11
       },
       "id": 8,
       "options": {
@@ -743,10 +745,10 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 12,
+        "h": 8,
         "w": 24,
         "x": 0,
-        "y": 20
+        "y": 19
       },
       "id": 9,
       "options": {
@@ -774,6 +776,99 @@
       ],
       "title": "Latest Active Queue Rows",
       "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influxdb"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 12,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "pointSize": 3,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 12,
+        "x": 0,
+        "y": 27
+      },
+      "id": 5,
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "pluginVersion": "11.6.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "influxdb"
+          },
+          "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"scoreboard_queue\")\n  |> filter(fn: (r) => r._field == \"running_count\" or r._field == \"queued_count\" or r._field == \"active_count\")\n  |> group(columns: [\"_field\"])\n  |> aggregateWindow(every: v.windowPeriod, fn: last, createEmpty: false)\n  |> map(fn: (r) => ({r with _field: if r._field == \"running_count\" then \"Running tests\" else if r._field == \"queued_count\" then \"Queued teams\" else \"Overall testing teams\"}))\n  |> keep(columns: [\"_time\", \"_value\", \"_field\"])\n  |> group(columns: [\"_field\"])",
+          "refId": "A"
+        }
+      ],
+      "title": "Queue Activity Over Time",
+      "type": "timeseries"
     }
   ],
   "preload": false,
@@ -824,12 +919,12 @@
     ]
   },
   "time": {
-    "from": "now-30m",
+    "from": "now-12h",
     "to": "now"
   },
   "timepicker": {},
   "timezone": "browser",
   "title": "Sweb Queue Monitor",
   "uid": "sweb-queue-monitor",
-  "version": 3
+  "version": 26
 }

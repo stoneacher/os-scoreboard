@@ -11,16 +11,21 @@
         "hide": true,
         "iconColor": "rgba(0, 211, 255, 1)",
         "name": "Annotations & Alerts",
+        "target": {
+          "limit": 100,
+          "matchAny": false,
+          "tags": [],
+          "type": "dashboard"
+        },
         "type": "dashboard"
       }
     ]
   },
   "editable": true,
   "fiscalYearStartMonth": 0,
-  "graphTooltip": 0,
-  "id": null,
+  "graphTooltip": 1,
+  "id": 2,
   "links": [],
-  "liveNow": false,
   "panels": [
     {
       "datasource": {
@@ -37,8 +42,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "yellow",
@@ -55,8 +59,8 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 4,
-        "w": 6,
+        "h": 3,
+        "w": 24,
         "x": 0,
         "y": 0
       },
@@ -66,6 +70,7 @@
         "graphMode": "area",
         "justifyMode": "auto",
         "orientation": "auto",
+        "percentChangeColorMode": "standard",
         "reduceOptions": {
           "calcs": [
             "lastNotNull"
@@ -73,7 +78,9 @@
           "fields": "",
           "values": false
         },
-        "textMode": "auto"
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
       },
       "pluginVersion": "11.6.0",
       "targets": [
@@ -94,6 +101,7 @@
         "type": "influxdb",
         "uid": "influxdb"
       },
+      "description": "empty Lines/Missing ranks are due to anonymous teams which are not tracked here.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -106,96 +114,7 @@
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
-            "drawStyle": "line",
-            "fillOpacity": 10,
-            "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "insertNulls": false,
-            "lineInterpolation": "linear",
-            "lineWidth": 2,
-            "pointSize": 4,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "auto",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          },
-          "unit": "percent"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 9,
-        "w": 12,
-        "x": 0,
-        "y": 4
-      },
-      "id": 2,
-      "options": {
-        "legend": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "displayMode": "table",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "influxdb",
-            "uid": "influxdb"
-          },
-          "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"team_scoreboard\" and r._field == \"score\")\n  |> filter(fn: (r) => exists r.team_id and r.team_id =~ /^${team_id:regex}$/)\n  |> group(columns: [\"display_name\"])\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\n  |> yield(name: \"score\")",
-          "refId": "A"
-        }
-      ],
-      "title": "Score Over Time",
-      "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "influxdb",
-        "uid": "influxdb"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
+            "barWidthFactor": 0.6,
             "drawStyle": "line",
             "fillOpacity": 0,
             "gradientMode": "none",
@@ -221,24 +140,39 @@
               "mode": "off"
             }
           },
+          "decimals": 0,
           "mappings": [],
+          "max": -1,
+          "min": -60,
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               }
             ]
           }
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Value"
+            },
+            "properties": [
+              {
+                "id": "custom.transform",
+                "value": "negative-Y"
+              }
+            ]
+          }
+        ]
       },
       "gridPos": {
-        "h": 9,
-        "w": 12,
-        "x": 12,
-        "y": 4
+        "h": 18,
+        "w": 24,
+        "x": 0,
+        "y": 3
       },
       "id": 3,
       "options": {
@@ -247,21 +181,25 @@
             "lastNotNull"
           ],
           "displayMode": "table",
-          "placement": "bottom",
-          "showLegend": true
+          "placement": "right",
+          "showLegend": true,
+          "sortBy": "Last *",
+          "sortDesc": false
         },
         "tooltip": {
+          "hideZeros": false,
           "mode": "multi",
           "sort": "asc"
         }
       },
+      "pluginVersion": "11.6.0",
       "targets": [
         {
           "datasource": {
             "type": "influxdb",
             "uid": "influxdb"
           },
-          "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"team_scoreboard\" and r._field == \"rank\")\n  |> filter(fn: (r) => exists r.team_id and r.team_id =~ /^${team_id:regex}$/)\n  |> group(columns: [\"display_name\"])\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\n  |> yield(name: \"rank\")",
+          "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"team_scoreboard\" and r._field == \"rank\")\n  |> filter(fn: (r) => exists r.team_id and r.team_id =~ /^${team_id:regex}$/)\n  |> filter(fn: (r) => not exists r.submission_type or r.submission_type =~ /^${submission_type:regex}$/)     \n  |> group(columns: [\"display_name\"])\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: true)\n  |> fill(usePrevious: true)\n  |> yield(name: \"rank\")",
           "refId": "A"
         }
       ],
@@ -281,28 +219,43 @@
           "custom": {
             "align": "auto",
             "cellOptions": {
-              "type": "auto"
+              "type": "auto",
+              "wrapText": false
             },
-            "inspect": false
+            "filterable": false,
+            "inspect": false,
+            "minWidth": 80
           },
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               }
             ]
           }
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "display_name"
+            },
+            "properties": [
+              {
+                "id": "custom.minWidth",
+                "value": 170
+              }
+            ]
+          }
+        ]
       },
       "gridPos": {
-        "h": 10,
-        "w": 12,
+        "h": 5,
+        "w": 24,
         "x": 0,
-        "y": 13
+        "y": 21
       },
       "id": 4,
       "options": {
@@ -315,7 +268,8 @@
           ],
           "show": false
         },
-        "showHeader": true
+        "showHeader": true,
+        "sortBy": []
       },
       "pluginVersion": "11.6.0",
       "targets": [
@@ -324,11 +278,11 @@
             "type": "influxdb",
             "uid": "influxdb"
           },
-          "query": "from(bucket: \"${bucket}\")\n  |> range(start: -24h)\n  |> filter(fn: (r) => r._measurement == \"team_scoreboard\")\n  |> filter(fn: (r) => r._field == \"rank\" or r._field == \"score\" or r._field == \"avg_5d\" or r._field == \"up_count\" or r._field == \"tw\" or r._field == \"perf\")\n  |> group(columns: [\"display_name\", \"visibility_mode\", \"_field\"])\n  |> last()\n  |> pivot(rowKey: [\"display_name\", \"visibility_mode\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n  |> sort(columns: [\"rank\"])",
+          "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"team_scoreboard\")\n  |> filter(fn: (r) => exists r.team_id and r.team_id =~ /^${team_id:regex}$/)\n  |> filter(fn: (r) => r._field == \"rank\" or r._field == \"score\" or r._field == \"threads\" or r._field == \"fork_exec\" or r._field == \"other\" or r._field == \"avg_5d\" or r._field == \"up_count\" or r._field == \"tw\" or r._field == \"perf\" or r._field == \"build_ok\" or r._field == \"boot_ok\")\n  |> group(columns: [\"team_id\", \"display_name\", \"_field\"])\n  |> last()\n  |> pivot(rowKey: [\"team_id\", \"display_name\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n  |> group()\n  |> keep(columns: [\"rank\", \"team_id\", \"display_name\", \"score\", \"threads\", \"fork_exec\", \"other\", \"avg_5d\", \"up_count\", \"tw\", \"perf\", \"build_ok\", \"boot_ok\"])\n  |> sort(columns: [\"rank\"])",
           "refId": "A"
         }
       ],
-      "title": "Latest Standings",
+      "title": "Latest Standings For Selected Stable Teams",
       "type": "table"
     },
     {
@@ -342,43 +296,78 @@
             "mode": "palette-classic"
           },
           "custom": {
-            "align": "auto",
-            "cellOptions": {
-              "type": "auto"
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
             },
-            "inspect": false
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineStyle": {
+              "fill": "solid"
+            },
+            "lineWidth": 2,
+            "pointSize": 4,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
           },
           "mappings": [],
+          "max": 100,
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               }
             ]
-          }
+          },
+          "unit": "percent"
         },
         "overrides": []
       },
       "gridPos": {
-        "h": 8,
+        "h": 18,
         "w": 24,
         "x": 0,
-        "y": 23
+        "y": 26
       },
-      "id": 6,
+      "id": 2,
       "options": {
-        "cellHeight": "sm",
-        "footer": {
-          "countRows": false,
-          "fields": "",
-          "reducer": [
-            "sum"
+        "legend": {
+          "calcs": [
+            "lastNotNull"
           ],
-          "show": false
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true,
+          "sortBy": "Last *",
+          "sortDesc": true
         },
-        "showHeader": true
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "multi",
+          "sort": "desc"
+        }
       },
       "pluginVersion": "11.6.0",
       "targets": [
@@ -387,16 +376,17 @@
             "type": "influxdb",
             "uid": "influxdb"
           },
-          "query": "first_scores = from(bucket: \"${bucket}\")\n  |> range(start: -24h)\n  |> filter(fn: (r) => r._measurement == \"team_scoreboard\" and r._field == \"score\")\n  |> filter(fn: (r) => exists r.team_id)\n  |> group(columns: [\"team_id\", \"display_name\"])\n  |> first()\n  |> rename(columns: {_value: \"start_score\"})\n  |> keep(columns: [\"team_id\", \"display_name\", \"start_score\"])\n\nlast_scores = from(bucket: \"${bucket}\")\n  |> range(start: -24h)\n  |> filter(fn: (r) => r._measurement == \"team_scoreboard\" and r._field == \"score\")\n  |> filter(fn: (r) => exists r.team_id)\n  |> group(columns: [\"team_id\", \"display_name\"])\n  |> last()\n  |> rename(columns: {_value: \"end_score\"})\n  |> keep(columns: [\"team_id\", \"display_name\", \"end_score\"])\n\njoin(tables: {first: first_scores, last: last_scores}, on: [\"team_id\", \"display_name\"])\n  |> map(fn: (r) => ({display_name: r.display_name, team_id: r.team_id, start_score: r.start_score, end_score: r.end_score, score_delta: r.end_score - r.start_score}))\n  |> sort(columns: [\"score_delta\"], desc: true)\n  |> limit(n: 20)",
+          "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"team_scoreboard\" and r._field == \"score\")\n  |> filter(fn: (r) => exists r.team_id and r.team_id =~ /^${team_id:regex}$/)\n  |> filter(fn: (r) => not exists r.submission_type or r.submission_type =~ /^${submission_type:regex}$/)     \n  |> group(columns: [\"display_name\"])\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: true)\n  |> fill(usePrevious: true)\n  |> yield(name: \"score\")",
           "refId": "A"
         }
       ],
-      "title": "Top Score Changes In The Last 24 Hours",
-      "type": "table"
+      "title": "Score Over Time",
+      "type": "timeseries"
     }
   ],
+  "preload": false,
   "refresh": "5m",
-  "schemaVersion": 39,
+  "schemaVersion": 41,
   "tags": [
     "scoreboard",
     "influxdb"
@@ -405,29 +395,18 @@
     "list": [
       {
         "current": {
-          "selected": false,
           "text": "scoreboard",
           "value": "scoreboard"
         },
-        "hide": 0,
-        "includeAll": false,
+        "hide": 2,
         "label": "Bucket",
-        "multi": false,
         "name": "bucket",
-        "options": [
-          {
-            "selected": true,
-            "text": "scoreboard",
-            "value": "scoreboard"
-          }
-        ],
         "query": "scoreboard",
-        "skipUrlSync": false,
+        "skipUrlSync": true,
         "type": "constant"
       },
       {
         "current": {
-          "selected": true,
           "text": "All",
           "value": "$__all"
         },
@@ -436,29 +415,51 @@
           "uid": "influxdb"
         },
         "definition": "import \"influxdata/influxdb/schema\"\nschema.tagValues(bucket: \"${bucket}\", tag: \"team_id\", predicate: (r) => r._measurement == \"team_scoreboard\", start: -30d)",
-        "hide": 0,
+        "description": "The team Identiefier on the testsystem",
         "includeAll": true,
-        "label": "Stable Team",
+        "label": "teamID",
         "multi": true,
         "name": "team_id",
         "options": [],
         "query": "import \"influxdata/influxdb/schema\"\nschema.tagValues(bucket: \"${bucket}\", tag: \"team_id\", predicate: (r) => r._measurement == \"team_scoreboard\", start: -30d)",
         "refresh": 2,
         "regex": "",
-        "skipUrlSync": false,
         "sort": 1,
+        "type": "query"
+      },
+      {
+        "allowCustomValue": false,
+        "current": {
+          "text": [
+            "SubmissionI1"
+          ],
+          "value": [
+            "SubmissionI1"
+          ]
+        },
+        "definition": "  import \"influxdata/influxdb/schema\"\n  schema.tagValues(bucket: \"${bucket}\", tag: \"submission_type\", predicate: (r) => r._measurement == \"team_scoreboard\", start: -30d)",
+        "description": "The Submission tag found in teh Testystem",
+        "includeAll": true,
+        "label": "SubmissionID",
+        "multi": true,
+        "name": "submission_type",
+        "options": [],
+        "query": {
+          "query": "  import \"influxdata/influxdb/schema\"\n  schema.tagValues(bucket: \"${bucket}\", tag: \"submission_type\", predicate: (r) => r._measurement == \"team_scoreboard\", start: -30d)"
+        },
+        "refresh": 2,
+        "regex": "",
         "type": "query"
       }
     ]
   },
   "time": {
-    "from": "now-24h",
+    "from": "now-2d",
     "to": "now"
   },
   "timepicker": {},
   "timezone": "browser",
   "title": "Sweb Scoreboard Monitor",
   "uid": "sweb-scoreboard-monitor",
-  "version": 1,
-  "weekStart": ""
+  "version": 35
 }
