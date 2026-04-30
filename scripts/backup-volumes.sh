@@ -8,6 +8,7 @@ BACKUP_ROOT="${BACKUP_ROOT:-$PROJECT_ROOT/backups}"
 TIMESTAMP="$(date -u +%Y%m%dT%H%M%SZ)"
 BACKUP_DIR="${BACKUP_ROOT}/${PROJECT_NAME}-${TIMESTAMP}"
 KEEP_RUNNING="${KEEP_RUNNING:-false}"
+RETENTION_DAYS="${RETENTION_DAYS:-14}"
 
 VOLUMES=(
   "${PROJECT_NAME}_influxdb-data"
@@ -87,6 +88,17 @@ write_manifest() {
   } >"${manifest_path}"
 }
 
+cleanup_old_backups() {
+  local count
+  count=$(find "${BACKUP_ROOT}" -maxdepth 1 -type d -name "${PROJECT_NAME}-*" -mtime "+${RETENTION_DAYS}" | wc -l | tr -d ' ')
+  if [ "$count" -eq 0 ]; then
+    log "no backups older than ${RETENTION_DAYS} days to clean up"
+    return
+  fi
+  log "removing ${count} backup(s) older than ${RETENTION_DAYS} days"
+  find "${BACKUP_ROOT}" -maxdepth 1 -type d -name "${PROJECT_NAME}-*" -mtime "+${RETENTION_DAYS}" -exec rm -rf {} +
+}
+
 main() {
   require_command docker
   require_command tar
@@ -114,6 +126,7 @@ main() {
 
   write_manifest
   log "backup completed at ${BACKUP_DIR}"
+  cleanup_old_backups
 }
 
 main "$@"
