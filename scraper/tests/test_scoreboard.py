@@ -47,6 +47,8 @@ def test_column_normalization() -> None:
     assert _normalize_column_name("#") == "rank"
     assert _normalize_column_name("5d Avg.") == "avg_5d"
     assert _normalize_column_name("Fork / Exec") == "fork_exec"
+    assert _normalize_column_name("Swapping") == "swapping"
+    assert _normalize_column_name("SHM") == "shm"
     assert _normalize_column_name("SubmissionI1") == "submission1"
     assert _normalize_column_name("SubmissionD2") == "submission1"
     assert _normalize_column_name("SubmissionI2") == "submission1"
@@ -96,8 +98,8 @@ def test_row_normalization() -> None:
             "build": "OK",
             "boot": "FAIL",
             "score": "92.6%",
-            "threads": "91%",
-            "fork_exec": "80%",
+            "swapping": "91%",
+            "shm": "80%",
             "other": "77%",
             "avg_5d": "88%",
             "up_count": "42",
@@ -116,6 +118,8 @@ def test_row_normalization() -> None:
     assert row.build_ok is True
     assert row.boot_ok is False
     assert row.score == 92.6
+    assert row.swapping == 91.0
+    assert row.shm == 80.0
     assert row.up_count == 42
     assert row.queue_state == "queued"
     assert row.queue_position == 3
@@ -129,6 +133,8 @@ def test_html_parsing_fixture() -> None:
     assert len(rows) == 2
     assert rows[0].team_id == "B2"
     assert rows[0].score == 92.6
+    assert rows[0].swapping == 91.0
+    assert rows[0].shm == 80.5
     assert rows[0].queue_state == "running"
     assert rows[0].queue_running_percent == 37.0
     assert all(row.visibility_mode != "anonymous" for row in rows)

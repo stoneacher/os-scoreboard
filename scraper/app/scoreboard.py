@@ -24,6 +24,8 @@ EXPECTED_COLUMNS = {
     "score",
     "threads",
     "fork_exec",
+    "swapping",
+    "shm",
     "other",
     "avg_5d",
     "up_count",
@@ -86,6 +88,8 @@ class ScoreboardRow:
     score: float | None
     threads: float | None
     fork_exec: float | None
+    swapping: float | None
+    shm: float | None
     other: float | None
     avg_5d: float | None
     up_count: int | None
@@ -276,6 +280,9 @@ def _normalize_column_name(value: str) -> str:
         "thread": "threads",
         "forkexec": "fork_exec",
         "fork": "fork_exec",
+        "swapping": "swapping",
+        "swap": "swapping",
+        "shm": "shm",
         "other": "other",
         "5davg": "avg_5d",
         "5dayavg": "avg_5d",
@@ -331,6 +338,8 @@ def normalize_row(row: dict[str, Any], scrape_time: datetime) -> ScoreboardRow:
         score=parse_percentage(row.get("score")),
         threads=parse_percentage(row.get("threads")),
         fork_exec=parse_percentage(row.get("fork_exec")),
+        swapping=parse_percentage(row.get("swapping")),
+        shm=parse_percentage(row.get("shm")),
         other=parse_percentage(row.get("other")),
         avg_5d=parse_percentage(row.get("avg_5d")),
         up_count=parse_int(row.get("up_count")),

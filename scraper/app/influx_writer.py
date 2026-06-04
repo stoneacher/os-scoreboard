@@ -87,6 +87,8 @@ class InfluxWriter:
             "score": row.score,
             "threads": row.threads,
             "fork_exec": row.fork_exec,
+            "swapping": row.swapping,
+            "shm": row.shm,
             "other": row.other,
             "avg_5d": row.avg_5d,
             "up_count": row.up_count,
