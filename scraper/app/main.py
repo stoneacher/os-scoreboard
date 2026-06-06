@@ -11,6 +11,7 @@ from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from app.config import Settings, load_settings
+from app.gitlab_poller import run_poller
 from app.influx_writer import InfluxWriter
 from app.logging_config import configure_logging
 from app.scoreboard import (
@@ -253,6 +254,13 @@ def main() -> None:
         settings.influx_org,
         settings.influx_bucket,
     )
+    gitlab_thread = threading.Thread(
+        target=run_poller,
+        args=(settings, writer, stop_event),
+        daemon=True,
+        name="gitlab-poller",
+    )
+    gitlab_thread.start()
     previous_row_hashes: dict[str, str] = {}
     last_written_times: dict[str, datetime] = {}
     try:

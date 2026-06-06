@@ -37,6 +37,13 @@ def _optional_int_env(name: str, default: int) -> int:
         raise ValueError(f"invalid integer value for {name}: {value}") from exc
 
 
+def _optional_env(name: str) -> str | None:
+    value = os.getenv(name)
+    if value is None or value.strip() == "":
+        return None
+    return value.strip()
+
+
 @dataclass(frozen=True)
 class Settings:
     scoreboard_url: str
@@ -54,6 +61,14 @@ class Settings:
     failed_html_dir: str
     health_host: str
     health_port: int
+    gitlab_api_url: str | None
+    gitlab_project_id: str | None
+    gitlab_api_token: str | None
+    gitlab_poll_interval_seconds: int
+
+    @property
+    def gitlab_enabled(self) -> bool:
+        return bool(self.gitlab_api_token and self.gitlab_api_url and self.gitlab_project_id)
 
 
 def load_settings() -> Settings:
@@ -73,4 +88,8 @@ def load_settings() -> Settings:
         failed_html_dir=_required_env("FAILED_HTML_DIR"),
         health_host=_required_env("HEALTH_HOST"),
         health_port=_int_env("HEALTH_PORT"),
+        gitlab_api_url=_optional_env("GITLAB_API_URL"),
+        gitlab_project_id=_optional_env("GITLAB_PROJECT_ID"),
+        gitlab_api_token=_optional_env("GITLAB_API_TOKEN"),
+        gitlab_poll_interval_seconds=_optional_int_env("GITLAB_POLL_INTERVAL_SECONDS", 120),
     )

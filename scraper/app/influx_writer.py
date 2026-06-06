@@ -1,12 +1,15 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from influxdb_client import InfluxDBClient, Point, WritePrecision
 from influxdb_client.client.write_api import SYNCHRONOUS
 
 from app.scoreboard import QueueSnapshot, ScoreboardRow
+
+if TYPE_CHECKING:
+    from app.gitlab_poller import GitCommit
 
 
 class InfluxWriter:
@@ -63,6 +66,22 @@ class InfluxWriter:
             .time(scrape_time, WritePrecision.NS)
         )
         self.write_api.write(bucket=self.bucket, org=self.org, record=point)
+
+    def write_git_commits(self, commits: list[GitCommit], project_id: str) -> int:
+        points = []
+        for commit in commits:
+            point = (
+                Point("git_commits")
+                .tag("project_id", project_id)
+                .field("commit_hash", commit.short_sha)
+                .field("author", commit.author[:500])
+                .field("message", commit.message[:500])
+                .time(commit.committed_at, WritePrecision.NS)
+            )
+            points.append(point)
+        if points:
+            self.write_api.write(bucket=self.bucket, org=self.org, record=points)
+        return len(points)
 
     def _row_to_point(self, row: ScoreboardRow) -> Point:
         point = (
