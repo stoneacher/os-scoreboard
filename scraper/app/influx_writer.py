@@ -73,6 +73,7 @@ class InfluxWriter:
             point = (
                 Point("git_commits")
                 .tag("project_id", project_id)
+                .field("full_sha", commit.sha)
                 .field("commit_hash", commit.short_sha)
                 .field("author", commit.author[:500])
                 .field("message", commit.message[:500])
@@ -82,6 +83,24 @@ class InfluxWriter:
         if points:
             self.write_api.write(bucket=self.bucket, org=self.org, record=points)
         return len(points)
+
+    def read_last_git_commit(self, project_id: str) -> tuple[str, str] | None:
+        query = (
+            f'from(bucket: "{self.bucket}")'
+            f'  |> range(start: -365d)'
+            f'  |> filter(fn: (r) => r._measurement == "git_commits")'
+            f'  |> filter(fn: (r) => r._field == "full_sha")'
+            f'  |> filter(fn: (r) => r.project_id == "{project_id}")'
+            f'  |> last()'
+        )
+        try:
+            tables = self.client.query_api().query(query, org=self.org)
+            for table in tables:
+                for record in table.records:
+                    return record.get_value(), record.get_time().isoformat()
+        except Exception:
+            pass
+        return None
 
     def _row_to_point(self, row: ScoreboardRow) -> Point:
         point = (

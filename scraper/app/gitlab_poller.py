@@ -80,8 +80,13 @@ class GitLabPoller:
     def __init__(self, settings: Settings, writer: InfluxWriter) -> None:
         self._settings = settings
         self._writer = writer
-        self._last_seen_sha: str | None = None
-        self._since: str = (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()
+        last = writer.read_last_git_commit(settings.gitlab_project_id)
+        if last:
+            self._last_seen_sha, self._since = last
+            LOGGER.info("gitlab poller resuming", extra={"last_sha": self._last_seen_sha[:8], "since": self._since})
+        else:
+            self._last_seen_sha = None
+            self._since = (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()
 
     def poll_once(self) -> None:
         try:
