@@ -130,6 +130,52 @@
           "query": "  import \"array\"\n\n  array.from(rows: [{\n    _time: 2026-05-18T14:25:00Z,\n    _end:  2026-05-18T14:30:00Z,\n    text:  \"changed 'heartbeat' scrape interval from 1hr to 30 mins.\",\n    tags:  \"scraper\"\n  }])\n",
           "refId": "Anno"
         }
+      },
+      {
+        "datasource": {
+          "type": "influxdb",
+          "uid": "influxdb"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "red",
+        "mappings": {
+          "tags": {
+            "source": "field",
+            "value": "tags"
+          },
+          "text": {
+            "source": "field",
+            "value": "text"
+          },
+          "time": {
+            "source": "field",
+            "value": "_time"
+          },
+          "timeEnd": {
+            "source": "field",
+            "value": "_end"
+          }
+        },
+        "name": "Testsystem down",
+        "target": {
+          "query": "  import \"array\"\n\n  array.from(rows: [{\n    _time: 2026-06-04T10:45:00Z,\n    _end:  2026-06-04T10:51:00Z,\n    text:  \"Testsystem was down\",\n    tags:  \"outage\"\n  }])",
+          "refId": "Anno"
+        }
+      },
+      {
+        "datasource": {
+          "type": "influxdb",
+          "uid": "influxdb"
+        },
+        "enable": true,
+        "hide": false,
+        "iconColor": "green",
+        "name": "Git commits",
+        "target": {
+          "query": "from(bucket: \"${bucket}\")\n    |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n    |> filter(fn: (r) => r._measurement == \"git_commits\")\n    |> filter(fn: (r) => r._field == \"message\" or r._field == \"commit_hash\" or r._field == \"author\")\n    |> pivot(rowKey: [\"_time\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n    |> map(fn: (r) => ({\n        _time: r._time,\n        text: \"[\" + r.commit_hash + \"] \" + r.author + \": \" + r.message,\n        tags: \"commit\"\n    }))",
+          "refId": "Anno"
+        }
       }
     ]
   },
@@ -246,7 +292,7 @@
       "pluginVersion": "11.6.0",
       "targets": [
         {
-          "query": " from(bucket: \"${bucket}\")\n    |> range(start: -365d)\n    |> filter(fn: (r) => r._measurement == \"team_scoreboard\" and r._field == \"rank\")\n    |> filter(fn: (r) => exists r.submission_type and r.submission_type =~ /^${submission_type:regex}$/)\n    |> filter(fn: (r) => r.submission1 == \"OK\")\n    |> group(columns: [\"submission_type\", \"team_id\"])\n    |> last()\n    |> group(columns: [\"submission_type\"])\n    |> count()\n    |> map(fn: (r) => ({_time: now(), _field: \"OK Teams\", submission_type: r.submission_type, _value: r._value}))\n    |> group()",
+          "query": " from(bucket: \"${bucket}\")\n    |> range(start: 0)\n    |> filter(fn: (r) => r._measurement == \"team_scoreboard\" and r._field == \"rank\")\n    |> filter(fn: (r) => exists r.submission_type and r.submission_type =~ /^${submission_type:regex}$/)\n    |> filter(fn: (r) => r.submission1 == \"OK\")\n    |> group(columns: [\"submission_type\", \"team_id\"])\n    |> last()\n    |> group(columns: [\"submission_type\"])\n    |> count()\n    |> map(fn: (r) => ({_time: now(), _field: \"OK Teams\", submission_type: r.submission_type, _value: r._value}))\n    |> group()",
           "refId": "A"
         },
         {
@@ -255,7 +301,7 @@
             "uid": "influxdb"
           },
           "hide": false,
-          "query": "from(bucket: \"${bucket}\")\n    |> range(start: -365d)\n    |> filter(fn: (r) => r._measurement == \"team_scoreboard\" and r._field == \"rank\")\n    |> filter(fn: (r) => exists r.submission_type and r.submission_type =~ /^${submission_type:regex}$/)\n    |> group(columns: [\"submission_type\", \"team_id\"])\n    |> last()\n    |> group(columns: [\"submission_type\"])\n    |> count()\n    |> map(fn: (r) => ({_time: now(), _field: \"Total Teams\", submission_type: r.submission_type, _value: r._value}))\n    |> group()",
+          "query": "from(bucket: \"${bucket}\")\n    |> range(start: 0)\n    |> filter(fn: (r) => r._measurement == \"team_scoreboard\" and r._field == \"rank\")\n    |> filter(fn: (r) => exists r.submission_type and r.submission_type =~ /^${submission_type:regex}$/)\n    |> group(columns: [\"submission_type\", \"team_id\"])\n    |> last()\n    |> group(columns: [\"submission_type\"])\n    |> count()\n    |> map(fn: (r) => ({_time: now(), _field: \"Total Teams\", submission_type: r.submission_type, _value: r._value}))\n    |> group()",
           "refId": "B"
         }
       ],
@@ -320,7 +366,7 @@
       "pluginVersion": "11.6.0",
       "targets": [
         {
-          "query": "  from(bucket: \"${bucket}\")\n    |> range(start: -24h)\n    |> filter(fn: (r) => r._measurement == \"team_scoreboard\" and r._field == \"rank\")\n    |> group()\n    |> last()\n    |> map(fn: (r) => ({_time: r._time, _value: r.submission_type}))",
+          "query": "  from(bucket: \"${bucket}\")\n    |> range(start: 0)\n    |> filter(fn: (r) => r._measurement == \"team_scoreboard\" and r._field == \"rank\")\n    |> last()\n    |> group()\n    |> sort(columns: [\"_time\"])\n    |> last()\n    |> map(fn: (r) => ({_time: r._time, _value: r.submission_type}))",
           "refId": "A"
         }
       ],
@@ -555,7 +601,7 @@
       "pluginVersion": "11.6.0",
       "targets": [
         {
-          "query": "currentType = from(bucket: \"${bucket}\")\n    |> range(start: -24h)\n    |> filter(fn: (r) => r._measurement == \"team_scoreboard\" and r._field == \"rank\")\n    |> group()\n    |> last()\n    |> findRecord(fn: (key) => true, idx: 0)\n\n  from(bucket: \"${bucket}\")\n    |> range(start: -365d)\n    |> filter(fn: (r) => r._measurement == \"team_scoreboard\" and r._field == \"rank\")\n    |> filter(fn: (r) => r.submission_type == currentType.submission_type)\n    |> group()\n    |> first()\n    |> map(fn: (r) => ({\n        _time: now(),\n        _value: float(v: uint(v: now()) - uint(v: r._time)) / 1000000000.0,\n        _field: \"active_since\"\n    }))",
+          "query": "currentType = from(bucket: \"${bucket}\")\n    |> range(start: 0)\n    |> filter(fn: (r) => r._measurement == \"team_scoreboard\" and r._field == \"rank\")\n    |> last()\n    |> group()\n    |> sort(columns: [\"_time\"])\n    |> last()\n    |> findRecord(fn: (key) => true, idx: 0)\n\n  from(bucket: \"${bucket}\")\n    |> range(start: 0)\n    |> filter(fn: (r) => r._measurement == \"team_scoreboard\" and r._field == \"rank\")\n    |> filter(fn: (r) => r.submission_type == currentType.submission_type)\n    |> group()\n    |> first()\n    |> map(fn: (r) => ({\n        _time: now(),\n        _value: float(v: uint(v: now()) - uint(v: r._time)) / 1000000000.0,\n        _field: \"active_since\"\n    }))",
           "refId": "A"
         },
         {
@@ -564,7 +610,7 @@
             "uid": "influxdb"
           },
           "hide": false,
-          "query": " currentType = from(bucket: \"${bucket}\")\n    |> range(start: -24h)\n    |> filter(fn: (r) => r._measurement == \"team_scoreboard\" and r._field == \"rank\")\n    |> group()\n    |> last()\n    |> findRecord(fn: (key) => true, idx: 0)\n\n  from(bucket: \"${bucket}\")\n    |> range(start: -365d)\n    |> filter(fn: (r) => r._measurement == \"team_scoreboard\" and r._field == \"rank\")\n    |> filter(fn: (r) => r.submission_type == currentType.submission_type)\n    |> group()\n    |> first()\n    |> map(fn: (r) => ({\n        _time: now(),\n        _value: float(v: uint(v: r._time)) / 1000000.0,\n        _field: \"first_seen\"\n    }))",
+          "query": " currentType = from(bucket: \"${bucket}\")\n    |> range(start: 0)\n    |> filter(fn: (r) => r._measurement == \"team_scoreboard\" and r._field == \"rank\")\n    |> last()\n    |> group()\n    |> sort(columns: [\"_time\"])\n    |> last()\n    |> findRecord(fn: (key) => true, idx: 0)\n\n  from(bucket: \"${bucket}\")\n    |> range(start: 0)\n    |> filter(fn: (r) => r._measurement == \"team_scoreboard\" and r._field == \"rank\")\n    |> filter(fn: (r) => r.submission_type == currentType.submission_type)\n    |> group()\n    |> first()\n    |> map(fn: (r) => ({\n        _time: now(),\n        _value: float(v: uint(v: r._time)) / 1000000.0,\n        _field: \"first_seen\"\n    }))",
           "refId": "B"
         }
       ],
@@ -682,7 +728,7 @@
               "viz": false
             },
             "insertNulls": 4500000,
-            "lineInterpolation": "linear",
+            "lineInterpolation": "smooth",
             "lineWidth": 1,
             "pointSize": 4,
             "scaleDistribution": {
@@ -772,6 +818,98 @@
       "fieldConfig": {
         "defaults": {
           "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": 360000,
+            "lineInterpolation": "stepAfter",
+            "lineWidth": 2,
+            "pointSize": 3,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              }
+            ]
+          },
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 24,
+        "x": 0,
+        "y": 26
+      },
+      "id": 10,
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "pluginVersion": "11.6.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "influxdb"
+          },
+          "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"team_scoreboard\" and r._field == \"queue_running_percent\")\n  |> filter(fn: (r) => exists r.team_id and r.team_id =~ /^${team_id:regex}$/)\n  |> group(columns: [\"display_name\"])\n  |> aggregateWindow(every: v.windowPeriod, fn: last, createEmpty: false)\n  |> map(fn: (r) => ({r with _field: r.display_name}))\n  |> keep(columns: [\"_time\", \"_value\", \"_field\"])\n  |> group(columns: [\"_field\"])",
+          "refId": "A"
+        }
+      ],
+      "title": "Testsystem running progress",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influxdb"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
             "mode": "thresholds"
           },
           "custom": {
@@ -803,6 +941,10 @@
               {
                 "id": "custom.width",
                 "value": 65
+              },
+              {
+                "id": "unit",
+                "value": "percent"
               }
             ]
           },
@@ -838,7 +980,7 @@
             "properties": [
               {
                 "id": "custom.width",
-                "value": 101
+                "value": 98
               }
             ]
           },
@@ -874,7 +1016,11 @@
             "properties": [
               {
                 "id": "custom.width",
-                "value": 36
+                "value": 52
+              },
+              {
+                "id": "unit",
+                "value": "percent"
               }
             ]
           },
@@ -898,7 +1044,11 @@
             "properties": [
               {
                 "id": "custom.width",
-                "value": 55
+                "value": 58
+              },
+              {
+                "id": "unit",
+                "value": "percent"
               }
             ]
           },
@@ -910,7 +1060,11 @@
             "properties": [
               {
                 "id": "custom.width",
-                "value": 35
+                "value": 61
+              },
+              {
+                "id": "unit",
+                "value": "percent"
               }
             ]
           },
@@ -946,7 +1100,11 @@
             "properties": [
               {
                 "id": "custom.width",
-                "value": 53
+                "value": 65
+              },
+              {
+                "id": "unit",
+                "value": "percent"
               }
             ]
           },
@@ -961,6 +1119,62 @@
                 "value": 69
               }
             ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "_time"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 241
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "timestamp"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 167
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "swapping"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 82
+              },
+              {
+                "id": "unit",
+                "value": "percent"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "shm"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 56
+              },
+              {
+                "id": "unit",
+                "value": "percent"
+              }
+            ]
           }
         ]
       },
@@ -968,7 +1182,7 @@
         "h": 5,
         "w": 24,
         "x": 0,
-        "y": 26
+        "y": 31
       },
       "id": 4,
       "options": {
@@ -997,11 +1211,67 @@
             "type": "influxdb",
             "uid": "influxdb"
           },
-          "query": "  from(bucket: \"${bucket}\")\n    |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n    |> filter(fn: (r) => r._measurement == \"team_scoreboard\")\n    |> filter(fn: (r) => exists r.team_id and r.team_id =~ /^${team_id:regex}$/)\n    |> filter(fn: (r) => r._field == \"rank\" or r._field == \"score\" or r._field == \"threads\" or r._field == \"fork_exec\" or r._field == \"other\" or r._field == \"avg_5d\" or r._field == \"up_count\" or\n  r._field == \"tw\" or r._field == \"perf\" or r._field == \"build_ok\" or r._field == \"boot_ok\")\n    |> group(columns: [\"team_id\", \"display_name\", \"_field\", \"submission1\"])\n    |> last()\n    |> pivot(rowKey: [\"team_id\", \"display_name\", \"submission1\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n    |> group()\n    |> keep(columns: [\"rank\", \"team_id\", \"display_name\", \"score\", \"threads\", \"fork_exec\", \"other\", \"avg_5d\", \"up_count\", \"tw\", \"perf\", \"build_ok\", \"boot_ok\", \"submission1\"])\n    |> sort(columns: [\"rank\"])",
+          "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"team_scoreboard\")\n  |> filter(fn: (r) => exists r.team_id and r.team_id =~ /^${team_id:regex}$/)\n  |> filter(fn: (r) =>\n    r._field == \"rank\" or\n    r._field == \"score\" or\n    r._field == \"threads\" or\n    r._field == \"fork_exec\" or\n    r._field == \"swapping\" or\n    r._field == \"shm\" or\n    r._field == \"other\" or\n    r._field == \"avg_5d\" or\n    r._field == \"up_count\" or\n    r._field == \"tw\" or\n    r._field == \"perf\" or\n    r._field == \"build_ok\" or\n    r._field == \"boot_ok\"\n  )\n  |> group(columns: [\"team_id\", \"display_name\", \"_field\", \"submission1\"])\n  |> last()\n  |> pivot(\n    rowKey: [\"team_id\", \"display_name\", \"submission1\", \"_time\"],\n    columnKey: [\"_field\"],\n    valueColumn: \"_value\"\n  )\n  |> group()\n  |> keep(columns: [\n    \"rank\",\n    \"team_id\",\n    \"display_name\",\n    \"score\",\n    \"threads\",\n    \"fork_exec\",\n    \"swapping\",\n    \"shm\",\n    \"other\",\n    \"avg_5d\",\n    \"up_count\",\n    \"tw\",\n    \"perf\",\n    \"build_ok\",\n    \"boot_ok\",\n    \"submission1\",\n    \"_time\"\n  ])\n  |> sort(columns: [\"rank\"])",
           "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "influxdb"
+          },
+          "hide": true,
+          "query": "  from(bucket: \"${bucket}\")\n    |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n    |> filter(fn: (r) => r._measurement == \"team_scoreboard\")\n    |> filter(fn: (r) => exists r.team_id and r.team_id =~ /^${team_id:regex}$/)\n    |> filter(fn: (r) => r._field == \"rank\" or r._field == \"score\" or r._field == \"threads\" or r._field == \"fork_exec\" or r._field == \"other\" or r._field == \"avg_5d\" or r._field == \"up_count\" or\n  r._field == \"tw\" or r._field == \"perf\" or r._field == \"build_ok\" or r._field == \"boot_ok\")\n    |> group(columns: [\"team_id\", \"display_name\", \"_field\", \"submission1\"])\n    |> last()\n    |> pivot(rowKey: [\"team_id\", \"display_name\", \"submission1\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n    |> group()\n    |> keep(columns: [\"rank\", \"team_id\", \"display_name\", \"score\", \"threads\", \"fork_exec\", \"other\", \"avg_5d\", \"up_count\", \"tw\", \"perf\", \"build_ok\", \"boot_ok\", \"submission1\"])\n    |> sort(columns: [\"rank\"])\n",
+          "refId": "B"
         }
       ],
       "title": "Latest Standings For Selected Stable Teams",
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {},
+            "includeByName": {},
+            "indexByName": {
+              "_time": 14,
+              "avg_5d": 9,
+              "boot_ok": 4,
+              "build_ok": 3,
+              "display_name": 1,
+              "other": 8,
+              "perf": 12,
+              "rank": 0,
+              "score": 5,
+              "shm": 7,
+              "submission1": 13,
+              "swapping": 6,
+              "team_id": 2,
+              "tw": 11,
+              "up_count": 10
+            },
+            "renameByName": {
+              "_time": "timestamp"
+            }
+          }
+        },
+        {
+          "id": "convertFieldType",
+          "options": {
+            "conversions": [
+              {
+                "destinationType": "other",
+                "enumConfig": {
+                  "text": [
+                    75.3,
+                    57.8
+                  ]
+                },
+                "targetField": "score"
+              }
+            ],
+            "fields": {}
+          }
+        }
+      ],
       "type": "table"
     },
     {
@@ -1031,7 +1301,7 @@
               "viz": false
             },
             "insertNulls": 4800000,
-            "lineInterpolation": "linear",
+            "lineInterpolation": "smooth",
             "lineStyle": {
               "fill": "solid"
             },
@@ -1069,7 +1339,7 @@
         "h": 18,
         "w": 24,
         "x": 0,
-        "y": 31
+        "y": 36
       },
       "id": 2,
       "options": {
@@ -1113,7 +1383,7 @@
         "h": 12,
         "w": 24,
         "x": 0,
-        "y": 49
+        "y": 54
       },
       "id": 5,
       "options": {
@@ -1152,15 +1422,25 @@
     "list": [
       {
         "current": {
-          "text": "scoreboard",
-          "value": "scoreboard"
+          "text": "scoreboard-ws2026",
+          "value": "scoreboard-ws2026"
         },
-        "hide": 2,
-        "label": "Bucket",
+        "datasource": {
+          "type": "influxdb",
+          "uid": "influxdb"
+        },
+        "definition": "import \"strings\"\n\nbuckets()\n  |> filter(fn: (r) => r.name =~ /^scoreboard-(ss|ws)[0-9]{4}$/)\n  |> map(fn: (r) => ({_value: r.name, semester: strings.substring(v: r.name, start: 13, end: 17) + (if strings.hasPrefix(v: r.name, prefix: \"scoreboard-ws\") then \"1\" else \"0\")}))\n  |> sort(columns: [\"semester\"], desc: true)\n  |> keep(columns: [\"_value\"])",
+        "description": "One bucket per semester (scoreboard-ssYYYY / scoreboard-wsYYYY). For past semesters, set the time range to that semester.",
+        "includeAll": false,
+        "label": "Semester",
+        "multi": false,
         "name": "bucket",
-        "query": "scoreboard",
-        "skipUrlSync": true,
-        "type": "constant"
+        "options": [],
+        "query": "import \"strings\"\n\nbuckets()\n  |> filter(fn: (r) => r.name =~ /^scoreboard-(ss|ws)[0-9]{4}$/)\n  |> map(fn: (r) => ({_value: r.name, semester: strings.substring(v: r.name, start: 13, end: 17) + (if strings.hasPrefix(v: r.name, prefix: \"scoreboard-ws\") then \"1\" else \"0\")}))\n  |> sort(columns: [\"semester\"], desc: true)\n  |> keep(columns: [\"_value\"])",
+        "refresh": 1,
+        "regex": "",
+        "sort": 0,
+        "type": "query"
       },
       {
         "allowCustomValue": false,
@@ -1172,14 +1452,14 @@
           "type": "influxdb",
           "uid": "influxdb"
         },
-        "definition": "import \"influxdata/influxdb/schema\"\nschema.tagValues(bucket: \"${bucket}\", tag: \"team_id\", predicate: (r) => r._measurement == \"team_scoreboard\", start: -30d)",
+        "definition": "import \"influxdata/influxdb/schema\"\nschema.tagValues(bucket: \"${bucket}\", tag: \"team_id\", predicate: (r) => r._measurement == \"team_scoreboard\", start: time(v: 0))",
         "description": "The team Identiefier on the testsystem",
         "includeAll": true,
         "label": "teamID",
         "multi": true,
         "name": "team_id",
         "options": [],
-        "query": "import \"influxdata/influxdb/schema\"\nschema.tagValues(bucket: \"${bucket}\", tag: \"team_id\", predicate: (r) => r._measurement == \"team_scoreboard\", start: -30d)",
+        "query": "import \"influxdata/influxdb/schema\"\nschema.tagValues(bucket: \"${bucket}\", tag: \"team_id\", predicate: (r) => r._measurement == \"team_scoreboard\", start: time(v: 0))",
         "refresh": 2,
         "regex": "",
         "sort": 1,
@@ -1189,19 +1469,17 @@
         "allowCustomValue": false,
         "current": {
           "text": "All",
-          "value": [
-            "$__all"
-          ]
+          "value": "$__all"
         },
-        "definition": "  import \"influxdata/influxdb/schema\"\n  schema.tagValues(bucket: \"${bucket}\", tag: \"submission_type\", predicate: (r) => r._measurement == \"team_scoreboard\", start: -30d)",
-        "description": "The Submission tag found in teh Testystem",
+        "definition": "  import \"influxdata/influxdb/schema\"\n  schema.tagValues(bucket: \"${bucket}\", tag: \"submission_type\", predicate: (r) => r._measurement == \"team_scoreboard\", start: time(v: 0))",
+        "description": "SubmissionD1 -> Design-PoC A1 ///// \nSubmissionI1 -> Implementation A1 ///// \nSubmissionD2 -> Design-PoC A2 ///// \nSubmissionI2 -> Implementation A2 ///// \nSubmissionS1 -> Second Chance A1 ///// \nSubmissionS2 -> Second Chance A2",
         "includeAll": true,
         "label": "SubmissionID",
         "multi": true,
         "name": "submission_type",
         "options": [],
         "query": {
-          "query": "  import \"influxdata/influxdb/schema\"\n  schema.tagValues(bucket: \"${bucket}\", tag: \"submission_type\", predicate: (r) => r._measurement == \"team_scoreboard\", start: -30d)"
+          "query": "  import \"influxdata/influxdb/schema\"\n  schema.tagValues(bucket: \"${bucket}\", tag: \"submission_type\", predicate: (r) => r._measurement == \"team_scoreboard\", start: time(v: 0))"
         },
         "refresh": 2,
         "regex": "",
@@ -1210,12 +1488,12 @@
     ]
   },
   "time": {
-    "from": "now-24h",
+    "from": "now-1y",
     "to": "now"
   },
   "timepicker": {},
   "timezone": "",
   "title": "Sweb Scoreboard Monitor",
   "uid": "sweb-scoreboard-monitor",
-  "version": 105
+  "version": 119
 }

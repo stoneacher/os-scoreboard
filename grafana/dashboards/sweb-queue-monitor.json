@@ -12,6 +12,106 @@
         "iconColor": "rgba(0, 211, 255, 1)",
         "name": "Annotations & Alerts",
         "type": "dashboard"
+      },
+      {
+        "datasource": {
+          "type": "influxdb",
+          "uid": "influxdb"
+        },
+        "enable": true,
+        "hide": false,
+        "iconColor": "orange",
+        "mappings": {
+          "tags": {
+            "source": "field",
+            "value": "tags"
+          },
+          "text": {
+            "source": "field",
+            "value": "text"
+          },
+          "time": {
+            "source": "field",
+            "value": "_time"
+          },
+          "timeEnd": {
+            "source": "field",
+            "value": "_end"
+          },
+          "title": {
+            "source": "field",
+            "value": "title"
+          }
+        },
+        "name": "Parsing Issue Info",
+        "target": {
+          "query": "  import \"array\"\n\n  array.from(rows: [{\n    _time: 2026-04-24T15:10:00Z,\n    _end:  2026-04-28T13:10:00Z,\n    text:  \"Testsystem stopped showing some TeamIDs in parentheses, so the regex no longer matched and InfluxDB could not assign scraped data to the correct TeamID.\",\n    tags:  \"parser,bug\"\n  }])\n",
+          "refId": "Anno"
+        }
+      },
+      {
+        "datasource": {
+          "type": "influxdb",
+          "uid": "influxdb"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "green",
+        "mappings": {
+          "tags": {
+            "source": "field",
+            "value": "tags"
+          },
+          "text": {
+            "source": "field",
+            "value": "text"
+          },
+          "time": {
+            "source": "field",
+            "value": "_time"
+          },
+          "timeEnd": {
+            "source": "field",
+            "value": "_end"
+          }
+        },
+        "name": "Deadline A1",
+        "target": {
+          "query": "  import \"array\"\n\n  array.from(rows: [{\n    _time: 2026-04-24T10:00:00Z,\n    _end:  2026-04-24T16:00:00Z,\n    text:  \"Submission Deadline A1\",\n    tags:  \"deadline\"\n  }])",
+          "refId": "Anno"
+        }
+      },
+      {
+        "datasource": {
+          "type": "influxdb",
+          "uid": "influxdb"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "green",
+        "mappings": {
+          "tags": {
+            "source": "field",
+            "value": "tags"
+          },
+          "text": {
+            "source": "field",
+            "value": "text"
+          },
+          "time": {
+            "source": "field",
+            "value": "_time"
+          },
+          "timeEnd": {
+            "source": "field",
+            "value": "_end"
+          }
+        },
+        "name": "Testsystem A2 Design Discussion",
+        "target": {
+          "query": "  import \"array\"\n\n  array.from(rows: [{\n    _time: 2026-05-11T09:30:00Z,\n    _end:  2026-05-11T10:30:00Z,\n    text:  \"Testystem switch to A2 Design Discussion\",\n    tags:  \"tags\"\n  }])",
+          "refId": "Anno"
+        }
       }
     ]
   },
@@ -88,7 +188,7 @@
           "refId": "A"
         }
       ],
-      "title": "Running Tests Now",
+      "title": "Running Tests",
       "type": "stat"
     },
     {
@@ -170,7 +270,7 @@
           "refId": "A"
         }
       ],
-      "title": "Queued Teams Now",
+      "title": "Queued Teams",
       "type": "stat"
     },
     {
@@ -239,7 +339,7 @@
           "refId": "A"
         }
       ],
-      "title": "Max Queue Wait Now",
+      "title": "Max Queue Wait",
       "type": "stat"
     },
     {
@@ -247,6 +347,7 @@
         "type": "influxdb",
         "uid": "influxdb"
       },
+      "description": "scrapes for changes every 60 seconds. Global update (regardless of changes) every hour.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -541,8 +642,8 @@
               "tooltip": false,
               "viz": false
             },
-            "insertNulls": 90000,
-            "lineInterpolation": "linear",
+            "insertNulls": 360000,
+            "lineInterpolation": "stepAfter",
             "lineWidth": 2,
             "pointSize": 3,
             "scaleDistribution": {
@@ -883,34 +984,42 @@
     "list": [
       {
         "current": {
-          "text": "scoreboard",
-          "value": "scoreboard"
-        },
-        "hide": 2,
-        "label": "Bucket",
-        "name": "bucket",
-        "query": "scoreboard",
-        "skipUrlSync": true,
-        "type": "constant"
-      },
-      {
-        "current": {
-          "text": "All",
-          "value": [
-            "$__all"
-          ]
+          "text": "scoreboard-ws2026",
+          "value": "scoreboard-ws2026"
         },
         "datasource": {
           "type": "influxdb",
           "uid": "influxdb"
         },
-        "definition": "import \"influxdata/influxdb/schema\"\nschema.tagValues(bucket: \"${bucket}\", tag: \"team_id\", predicate: (r) => r._measurement == \"team_scoreboard\", start: -30d)",
+        "definition": "import \"strings\"\n\nbuckets()\n  |> filter(fn: (r) => r.name =~ /^scoreboard-(ss|ws)[0-9]{4}$/)\n  |> map(fn: (r) => ({_value: r.name, semester: strings.substring(v: r.name, start: 13, end: 17) + (if strings.hasPrefix(v: r.name, prefix: \"scoreboard-ws\") then \"1\" else \"0\")}))\n  |> sort(columns: [\"semester\"], desc: true)\n  |> keep(columns: [\"_value\"])",
+        "description": "One bucket per semester (scoreboard-ssYYYY / scoreboard-wsYYYY). For past semesters, set the time range to that semester.",
+        "includeAll": false,
+        "label": "Semester",
+        "multi": false,
+        "name": "bucket",
+        "options": [],
+        "query": "import \"strings\"\n\nbuckets()\n  |> filter(fn: (r) => r.name =~ /^scoreboard-(ss|ws)[0-9]{4}$/)\n  |> map(fn: (r) => ({_value: r.name, semester: strings.substring(v: r.name, start: 13, end: 17) + (if strings.hasPrefix(v: r.name, prefix: \"scoreboard-ws\") then \"1\" else \"0\")}))\n  |> sort(columns: [\"semester\"], desc: true)\n  |> keep(columns: [\"_value\"])",
+        "refresh": 1,
+        "regex": "",
+        "sort": 0,
+        "type": "query"
+      },
+      {
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
+        "datasource": {
+          "type": "influxdb",
+          "uid": "influxdb"
+        },
+        "definition": "import \"influxdata/influxdb/schema\"\nschema.tagValues(bucket: \"${bucket}\", tag: \"team_id\", predicate: (r) => r._measurement == \"team_scoreboard\", start: time(v: 0))",
         "includeAll": true,
         "label": "Stable Team",
         "multi": true,
         "name": "team_id",
         "options": [],
-        "query": "import \"influxdata/influxdb/schema\"\nschema.tagValues(bucket: \"${bucket}\", tag: \"team_id\", predicate: (r) => r._measurement == \"team_scoreboard\", start: -30d)",
+        "query": "import \"influxdata/influxdb/schema\"\nschema.tagValues(bucket: \"${bucket}\", tag: \"team_id\", predicate: (r) => r._measurement == \"team_scoreboard\", start: time(v: 0))",
         "refresh": 2,
         "regex": "",
         "sort": 1,
@@ -919,12 +1028,12 @@
     ]
   },
   "time": {
-    "from": "now-12h",
+    "from": "now-30m",
     "to": "now"
   },
   "timepicker": {},
   "timezone": "browser",
   "title": "Sweb Queue Monitor",
   "uid": "sweb-queue-monitor",
-  "version": 26
+  "version": 44
 }
