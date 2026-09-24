@@ -15,7 +15,6 @@ from app.gitlab_poller import run_poller
 from app.influx_writer import InfluxWriter
 from app.logging_config import configure_logging
 from app.scoreboard import (
-    ScoreboardRow,
     build_queue_snapshot,
     fetch_scoreboard_html,
     parse_scoreboard_html,
@@ -135,13 +134,18 @@ def save_failed_html(settings: Settings, html: str, scrape_time: datetime) -> st
     return path
 
 
+def heartbeat_slot(scrape_time: datetime, interval_seconds: int) -> int:
+    """Wall-clock aligned slot index; a new slot means a global heartbeat is due."""
+    return int(scrape_time.timestamp()) // interval_seconds
+
+
 def run_once(
     settings: Settings,
     writer: InfluxWriter,
     state: HealthState,
     previous_row_hashes: dict[str, str],
-    last_written_times: dict[str, datetime],
-) -> tuple[dict[str, str], dict[str, datetime]]:
+    last_heartbeat_slot: int | None,
+) -> tuple[dict[str, str], int | None]:
     scrape_time = datetime.now(timezone.utc)
     started = time.monotonic()
     html: str | None = None
@@ -161,17 +165,16 @@ def run_once(
         new_row_hashes = {r.display_name: row_hash(r) for r in rows}
         duration = time.monotonic() - started
 
-        if settings.skip_identical_snapshots:
-            def _needs_write(r: ScoreboardRow) -> bool:
-                if new_row_hashes[r.display_name] != previous_row_hashes.get(r.display_name):
-                    return True
-                last = last_written_times.get(r.display_name)
-                return last is None or (scrape_time - last).total_seconds() >= settings.heartbeat_interval_seconds
-            rows_to_write = [r for r in rows if _needs_write(r)]
+        current_slot = heartbeat_slot(scrape_time, settings.heartbeat_interval_seconds)
+        heartbeat_due = current_slot != last_heartbeat_slot
+        if settings.skip_identical_snapshots and not heartbeat_due:
+            rows_to_write = [
+                r for r in rows
+                if new_row_hashes[r.display_name] != previous_row_hashes.get(r.display_name)
+            ]
         else:
             rows_to_write = rows
 
-        new_last_written = {**last_written_times, **{r.display_name: scrape_time for r in rows_to_write}}
         rows_written = writer.write_rows(rows_to_write)
         skipped_identical = rows_written == 0 and bool(previous_row_hashes)
         if rows_to_write:
@@ -200,13 +203,14 @@ def run_once(
                 "rows_written": rows_written,
                 "snapshot_hash": current_hash,
                 "skipped_identical": skipped_identical,
+                "heartbeat": heartbeat_due,
                 "running_count": queue_snapshot.running_count,
                 "queued_count": queue_snapshot.queued_count,
                 "max_queue_position": queue_snapshot.max_queue_position,
                 "max_queue_wait_minutes": queue_snapshot.max_queue_wait_minutes,
             },
         )
-        return new_row_hashes, new_last_written
+        return new_row_hashes, current_slot
     except Exception as exc:
         duration = time.monotonic() - started
         failed_path = save_failed_html(settings, html, scrape_time) if html else None
@@ -232,7 +236,7 @@ def run_once(
             state.last_error = str(exc)
             state.rows_parsed = 0
             state.rows_written = 0
-        return previous_row_hashes, last_written_times
+        return previous_row_hashes, last_heartbeat_slot
 
 
 def main() -> None:
@@ -262,10 +266,10 @@ def main() -> None:
     )
     gitlab_thread.start()
     previous_row_hashes: dict[str, str] = {}
-    last_written_times: dict[str, datetime] = {}
+    last_heartbeat_slot: int | None = None
     try:
         while not stop_event.is_set():
-            previous_row_hashes, last_written_times = run_once(settings, writer, state, previous_row_hashes, last_written_times)
+            previous_row_hashes, last_heartbeat_slot = run_once(settings, writer, state, previous_row_hashes, last_heartbeat_slot)
             stop_event.wait(settings.scrape_interval_seconds)
     finally:
         writer.close()
