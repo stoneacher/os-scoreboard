@@ -118,7 +118,7 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
-  "id": 6,
+  "id": 11,
   "links": [],
   "panels": [
     {
@@ -995,13 +995,11 @@
         "description": "One bucket per semester (scoreboard-ssYYYY / scoreboard-wsYYYY). For past semesters, set the time range to that semester.",
         "includeAll": false,
         "label": "Semester",
-        "multi": false,
         "name": "bucket",
         "options": [],
         "query": "import \"strings\"\n\nbuckets()\n  |> filter(fn: (r) => r.name =~ /^scoreboard-(ss|ws)[0-9]{4}$/)\n  |> map(fn: (r) => ({_value: r.name, semester: strings.substring(v: r.name, start: 13, end: 17) + (if strings.hasPrefix(v: r.name, prefix: \"scoreboard-ws\") then \"1\" else \"0\")}))\n  |> sort(columns: [\"semester\"], desc: true)\n  |> keep(columns: [\"_value\"])",
         "refresh": 1,
         "regex": "",
-        "sort": 0,
         "type": "query"
       },
       {
@@ -1034,6 +1032,6 @@
   "timepicker": {},
   "timezone": "browser",
   "title": "Sweb Queue Monitor",
-  "uid": "sweb-queue-monitor",
-  "version": 44
+  "uid": "sweb-queue-monitor-ws2627",
+  "version": 1
 }

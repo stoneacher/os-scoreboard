@@ -18,171 +18,13 @@
           "type": "dashboard"
         },
         "type": "dashboard"
-      },
-      {
-        "datasource": {
-          "type": "influxdb",
-          "uid": "influxdb"
-        },
-        "enable": true,
-        "hide": true,
-        "iconColor": "orange",
-        "mappings": {
-          "time": {
-            "source": "field",
-            "value": "_time"
-          },
-          "timeEnd": {
-            "source": "field",
-            "value": "_end"
-          }
-        },
-        "name": "Parsing Issue Info",
-        "target": {
-          "query": "  import \"array\"\n\n  array.from(rows: [{\n    _time: 2026-04-24T15:10:00Z,\n    _end:  2026-04-28T13:10:00Z,\n    text:  \"Testsystem stopped showing some TeamIDs in parentheses, so the regex no longer matched and InfluxDB could not assign scraped data to the correct TeamID.\",\n    tags:  \"parser,bug\"\n  }])\n",
-          "refId": "Anno"
-        }
-      },
-      {
-        "datasource": {
-          "type": "influxdb",
-          "uid": "influxdb"
-        },
-        "enable": true,
-        "hide": true,
-        "iconColor": "green",
-        "mappings": {
-          "tags": {
-            "source": "field",
-            "value": "tags"
-          },
-          "text": {
-            "source": "field",
-            "value": "text"
-          },
-          "time": {
-            "source": "field",
-            "value": "_time"
-          },
-          "timeEnd": {
-            "source": "field",
-            "value": "_end"
-          }
-        },
-        "name": "Deadline A1",
-        "target": {
-          "query": "  import \"array\"\n\n  array.from(rows: [{\n    _time: 2026-04-24T10:00:00Z,\n    _end:  2026-04-24T16:00:00Z,\n    text:  \"Submission Deadline A1\",\n    tags:  \"deadline\"\n  }])",
-          "refId": "Anno"
-        }
-      },
-      {
-        "datasource": {
-          "type": "influxdb",
-          "uid": "influxdb"
-        },
-        "enable": true,
-        "hide": true,
-        "iconColor": "green",
-        "mappings": {
-          "tags": {
-            "source": "field",
-            "value": "tags"
-          },
-          "text": {
-            "source": "field",
-            "value": "text"
-          },
-          "time": {
-            "source": "field",
-            "value": "_time"
-          }
-        },
-        "name": "Testystem Change for A2 Design Discussion",
-        "target": {
-          "query": "  import \"array\"\n\n  array.from(rows: [{\n    _time: 2026-05-11T09:30:00Z,\n    _end:  2026-05-11T10:30:00Z,\n    text:  \"Testystem switch to A2 Design Discussion\",\n    tags:  \"tags\"\n  }])",
-          "refId": "Anno"
-        }
-      },
-      {
-        "datasource": {
-          "type": "influxdb",
-          "uid": "influxdb"
-        },
-        "enable": true,
-        "hide": true,
-        "iconColor": "green",
-        "mappings": {
-          "tags": {
-            "source": "field",
-            "value": "tags"
-          },
-          "text": {
-            "source": "field",
-            "value": "text"
-          },
-          "time": {
-            "source": "field",
-            "value": "_time"
-          }
-        },
-        "name": "Scrape change (60>30m)",
-        "target": {
-          "query": "  import \"array\"\n\n  array.from(rows: [{\n    _time: 2026-05-18T14:25:00Z,\n    _end:  2026-05-18T14:30:00Z,\n    text:  \"changed 'heartbeat' scrape interval from 1hr to 30 mins.\",\n    tags:  \"scraper\"\n  }])\n",
-          "refId": "Anno"
-        }
-      },
-      {
-        "datasource": {
-          "type": "influxdb",
-          "uid": "influxdb"
-        },
-        "enable": true,
-        "hide": true,
-        "iconColor": "red",
-        "mappings": {
-          "tags": {
-            "source": "field",
-            "value": "tags"
-          },
-          "text": {
-            "source": "field",
-            "value": "text"
-          },
-          "time": {
-            "source": "field",
-            "value": "_time"
-          },
-          "timeEnd": {
-            "source": "field",
-            "value": "_end"
-          }
-        },
-        "name": "Testsystem down",
-        "target": {
-          "query": "  import \"array\"\n\n  array.from(rows: [{\n    _time: 2026-06-04T10:45:00Z,\n    _end:  2026-06-04T10:51:00Z,\n    text:  \"Testsystem was down\",\n    tags:  \"outage\"\n  }])",
-          "refId": "Anno"
-        }
-      },
-      {
-        "datasource": {
-          "type": "influxdb",
-          "uid": "influxdb"
-        },
-        "enable": true,
-        "hide": false,
-        "iconColor": "green",
-        "name": "Git commits",
-        "target": {
-          "query": "from(bucket: \"${bucket}\")\n    |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n    |> filter(fn: (r) => r._measurement == \"git_commits\")\n    |> filter(fn: (r) => r._field == \"message\" or r._field == \"commit_hash\" or r._field == \"author\")\n    |> pivot(rowKey: [\"_time\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n    |> map(fn: (r) => ({\n        _time: r._time,\n        text: \"[\" + r.commit_hash + \"] \" + r.author + \": \" + r.message,\n        tags: \"commit\"\n    }))",
-          "refId": "Anno"
-        }
       }
     ]
   },
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
-  "id": 2,
+  "id": 10,
   "links": [],
   "panels": [
     {
@@ -1391,11 +1233,14 @@
         "alertName": "",
         "dashboardAlerts": false,
         "datasource": "-- Grafana --",
-        "folder": "",
+        "folder": {
+          "title": "WS2627",
+          "uid": "efz7xe5lxqkn4d"
+        },
         "groupBy": [],
         "groupMode": "default",
         "maxItems": 20,
-        "showInactiveAlerts": false,
+        "showInactiveAlerts": true,
         "sortOrder": 5,
         "stateFilter": {
           "error": true,
@@ -1433,13 +1278,11 @@
         "description": "One bucket per semester (scoreboard-ssYYYY / scoreboard-wsYYYY). For past semesters, set the time range to that semester.",
         "includeAll": false,
         "label": "Semester",
-        "multi": false,
         "name": "bucket",
         "options": [],
         "query": "import \"strings\"\n\nbuckets()\n  |> filter(fn: (r) => r.name =~ /^scoreboard-(ss|ws)[0-9]{4}$/)\n  |> map(fn: (r) => ({_value: r.name, semester: strings.substring(v: r.name, start: 13, end: 17) + (if strings.hasPrefix(v: r.name, prefix: \"scoreboard-ws\") then \"1\" else \"0\")}))\n  |> sort(columns: [\"semester\"], desc: true)\n  |> keep(columns: [\"_value\"])",
         "refresh": 1,
         "regex": "",
-        "sort": 0,
         "type": "query"
       },
       {
@@ -1488,12 +1331,12 @@
     ]
   },
   "time": {
-    "from": "now-1y",
+    "from": "now-3h",
     "to": "now"
   },
   "timepicker": {},
   "timezone": "",
   "title": "Sweb Scoreboard Monitor",
-  "uid": "sweb-scoreboard-monitor",
-  "version": 119
+  "uid": "sweb-scoreboard-monitor-new",
+  "version": 6
 }
