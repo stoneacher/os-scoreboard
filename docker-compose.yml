@@ -54,7 +54,7 @@ services:
       - internal
 
   grafana:
-    image: grafana/grafana-oss:11.6.0
+    image: grafana/grafana:13.3.0
     restart: unless-stopped
     env_file:
       - .env
