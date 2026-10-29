@@ -18,6 +18,38 @@
           "type": "dashboard"
         },
         "type": "dashboard"
+      },
+      {
+        "datasource": {
+          "type": "influxdb",
+          "uid": "influxdb"
+        },
+        "enable": true,
+        "hide": false,
+        "iconColor": "red",
+        "mappings": {
+          "tags": {
+            "source": "field",
+            "value": "tags"
+          },
+          "text": {
+            "source": "field",
+            "value": "text"
+          },
+          "time": {
+            "source": "field",
+            "value": "_time"
+          },
+          "timeEnd": {
+            "source": "field",
+            "value": "_end"
+          }
+        },
+        "name": "Scrape failures (auto)",
+        "target": {
+          "query": "from(bucket: \"${bucket}\")\n    |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n    |> filter(fn: (r) => r._measurement == \"scraper_health\" and r._field == \"ok\")\n    |> group()\n    |> sort(columns: [\"_time\"])\n    |> map(fn: (r) => ({_time: r._time, failed: if r._value then 0 else 1, run: if r._value then 0 else 1}))\n    |> difference(columns: [\"run\"], keepFirst: true)\n    |> map(fn: (r) => ({r with run: if exists r.run and r.run == 0 then 0 else 1}))\n    |> cumulativeSum(columns: [\"run\"])\n    |> filter(fn: (r) => r.failed == 1)\n    |> group(columns: [\"run\"])\n    |> reduce(\n        identity: {_time: 2200-01-01T00:00:00Z, _end: 1970-01-01T00:00:00Z, n: 0},\n        fn: (r, accumulator) => ({\n            _time: if r._time < accumulator._time then r._time else accumulator._time,\n            _end: if r._time > accumulator._end then r._time else accumulator._end,\n            n: accumulator.n + 1,\n        }),\n    )\n    |> group()\n    |> map(fn: (r) => ({\n        _time: r._time,\n        _end: r._end,\n        text: \"Scrape failing: \" + string(v: r.n) + \" consecutive failed scrape(s)\",\n        tags: \"outage,auto\",\n    }))",
+          "refId": "Anno"
+        }
       }
     ]
   },
