@@ -3,6 +3,10 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from pathlib import Path
 
+import pytest
+
+from app import scoreboard
+from app.influx_writer import InfluxWriter
 from app.scoreboard import (
     _normalize_column_name,
     build_queue_snapshot,
@@ -49,6 +53,7 @@ def test_column_normalization() -> None:
     assert _normalize_column_name("Fork / Exec") == "fork_exec"
     assert _normalize_column_name("Swapping") == "swapping"
     assert _normalize_column_name("SHM") == "shm"
+    assert _normalize_column_name("SubmissionD1") == "submission1"
     assert _normalize_column_name("SubmissionI1") == "submission1"
     assert _normalize_column_name("SubmissionD2") == "submission1"
     assert _normalize_column_name("SubmissionI2") == "submission1"
@@ -149,3 +154,22 @@ def test_html_parsing_fixture() -> None:
     assert queue_snapshot.max_queue_position == 3
     assert queue_snapshot.max_queue_wait_minutes == 32.0
     assert len(snapshot_hash(rows)) == 64
+
+
+@pytest.mark.parametrize("use_fallback", [False, True])
+@pytest.mark.parametrize("header", ["SubmissionD1", "Submission D1", "submissiond1"])
+def test_design_submission_tag(header: str, use_fallback: bool, monkeypatch) -> None:
+    fixture = Path(__file__).parent / "fixtures" / "scoreboard_sample.html"
+    html = fixture.read_text(encoding="utf-8").replace("SubmissionI2", header)
+    if use_fallback:
+        monkeypatch.setattr(scoreboard, "_rows_from_pandas", lambda html: None)
+
+    rows = parse_scoreboard_html(html, datetime(2026, 10, 30, tzinfo=timezone.utc))
+
+    assert all(row.submission_type == "SubmissionD1" for row in rows)
+    assert rows[0].submission1 == "FAIL"
+    # Serialize without opening a database connection.
+    writer = InfluxWriter.__new__(InfluxWriter)
+    line = writer._row_to_point(rows[0]).to_line_protocol()
+    assert ",submission_type=SubmissionD1" in line
+    assert ",submission1=FAIL" in line

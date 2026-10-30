@@ -42,6 +42,7 @@ NAMED_TEAM_RE = re.compile(r"^(?P<name>.*?)\s*\((?P<team_id>[A-Z][0-9]+)\)\s*$",
 NAMED_TEAM_NO_PARENS_RE = re.compile(r"^(?P<name>.+?)\s+(?P<team_id>[A-Z][0-9]+)\s*$", re.I)
 
 _SUBMISSION_TYPE_NAMES: dict[str, str] = {
+    "submissiond1": "SubmissionD1",
     "submissioni1": "SubmissionI1",
     "submissionl1": "SubmissionI1",
     "submissiond2": "SubmissionD2",
@@ -297,6 +298,7 @@ def _normalize_column_name(value: str) -> str:
         "mrcdate": "mrc_date_raw",
         "rdate": "mrc_date_raw",
         "submission1": "submission1",
+        "submissiond1": "submission1",
         "submissioni1": "submission1",
         "submissionl1": "submission1",
         "submissiond2": "submission1",
