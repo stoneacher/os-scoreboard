@@ -155,6 +155,11 @@ def parse_scoreboard_html(html: str, scrape_time: datetime) -> list[ScoreboardRo
     raw_rows = _rows_from_pandas(html)
     if raw_rows is None:
         raw_rows = _rows_from_beautifulsoup(html)
+    marked_ids = _marked_team_ids(html)
+    for row in raw_rows:
+        marked_id = marked_ids.get(clean_text(row.get("group")))
+        if marked_id:
+            row["group_id"] = marked_id
     rows = [normalize_row(row, scrape_time) for row in raw_rows]
     rows = [row for row in rows if row.team_label and not row.is_anonymous]
     if not rows:
@@ -245,12 +250,32 @@ def _rows_from_beautifulsoup(html: str) -> list[dict[str, Any]]:
             key = deduped[header_name]
             if key == "_skip":
                 continue
-            row[key] = clean_text(cells[cell_idx].get_text(" ", strip=True))
+            # Group labels may contain inline <b> markup; joining with a space
+            # would turn "Foo (<b>B2</b>)" into "Foo ( B2 )".
+            separator = "" if key == "group" else " "
+            row[key] = clean_text(cells[cell_idx].get_text(separator, strip=key != "group"))
         if submission_type:
             row["submission_type"] = submission_type
         if row:
             rows.append(row)
     return rows
+
+
+def _marked_team_ids(html: str) -> dict[str, str]:
+    """Map group label -> team ID taken from the <b> tag the scoreboard wraps it in.
+
+    Teams may embed their ID anywhere in the name (e.g. "SummerO<b>F6</b>7"),
+    so the bold markup is the only reliable source once the text is flattened.
+    """
+    soup = BeautifulSoup(html, "lxml")
+    result: dict[str, str] = {}
+    for cell in soup.find_all("td"):
+        for bold in cell.find_all("b"):
+            team_id = clean_text(bold.get_text())
+            if TEAM_ID_RE.match(team_id):
+                result[clean_text(cell.get_text())] = team_id.upper()
+                break
+    return result
 
 
 def _dedupe_columns(columns: list[str] | pd.Index) -> dict[str, str]:
@@ -323,7 +348,7 @@ def _normalize_column_name(value: str) -> str:
 
 
 def normalize_row(row: dict[str, Any], scrape_time: datetime) -> ScoreboardRow:
-    team = parse_team_label(row.get("group"))
+    team = parse_team_label(row.get("group"), row.get("group_id"))
     queue = parse_queue_status(row.get("queue_raw"))
     return ScoreboardRow(
         scrape_time=scrape_time,
@@ -359,10 +384,22 @@ def normalize_row(row: dict[str, Any], scrape_time: datetime) -> ScoreboardRow:
     )
 
 
-def parse_team_label(value: Any) -> TeamIdentity:
+def parse_team_label(value: Any, marked_id: str | None = None) -> TeamIdentity:
     label = clean_text(value)
     if label == "???":
         return TeamIdentity(label, None, None, "anonymous", True, False, "???")
+
+    marked_id = clean_text(marked_id).upper() or None
+    if marked_id and TEAM_ID_RE.match(marked_id):
+        named = NAMED_TEAM_RE.match(label) or NAMED_TEAM_NO_PARENS_RE.match(label)
+        if named and named.group("team_id").upper() == marked_id:
+            team_name = clean_text(named.group("name")) or None
+            display_name = f"{team_name} ({marked_id})" if team_name else marked_id
+            return TeamIdentity(label, team_name, marked_id, "named", False, True, display_name)
+        if label.upper() == marked_id:
+            return TeamIdentity(label, None, marked_id, "id_only", False, True, marked_id)
+        # ID embedded inside the name, e.g. "SummerOF67" with F6 marked.
+        return TeamIdentity(label, label, marked_id, "named", False, True, f"{label} ({marked_id})")
 
     named = NAMED_TEAM_RE.match(label) or NAMED_TEAM_NO_PARENS_RE.match(label)
     if named:

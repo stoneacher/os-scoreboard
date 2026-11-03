@@ -94,6 +94,53 @@ def test_id_only_team_parsing() -> None:
     assert team.display_name == "C2"
 
 
+@pytest.mark.parametrize(
+    ("label", "marked_id", "team_name", "display_name"),
+    [
+        ("SummerOF67", "F6", "SummerOF67", "SummerOF67 (F6)"),
+        ("DIN A3 Feature List", "A3", "DIN A3 Feature List", "DIN A3 Feature List (A3)"),
+        ("A5S 34T3RS", "A5", "A5S 34T3RS", "A5S 34T3RS (A5)"),
+        ("Foo (B2)", "B2", "Foo", "Foo (B2)"),
+        ("Rook D1", "D1", "Rook", "Rook (D1)"),
+    ],
+)
+def test_marked_team_id_parsing(label: str, marked_id: str, team_name: str, display_name: str) -> None:
+    team = parse_team_label(label, marked_id)
+    assert team.team_id == marked_id
+    assert team.team_name == team_name
+    assert team.display_name == display_name
+    assert team.visibility_mode == "named"
+    assert team.has_stable_identity is True
+
+
+@pytest.mark.parametrize("use_fallback", [False, True])
+def test_html_embedded_team_id(use_fallback: bool, monkeypatch) -> None:
+    fixture = Path(__file__).parent / "fixtures" / "scoreboard_sample.html"
+    html = fixture.read_text(encoding="utf-8").replace(
+        "<td>Foo&nbsp;(<b>B2</b>)</td>", "<td>Deadlo<b>C5</b>ociety</td>"
+    )
+    if use_fallback:
+        monkeypatch.setattr(scoreboard, "_rows_from_pandas", lambda html: None)
+
+    rows = parse_scoreboard_html(html, datetime(2026, 11, 3, tzinfo=timezone.utc))
+
+    assert rows[0].team_label == "DeadloC5ociety"
+    assert rows[0].team_id == "C5"
+    assert rows[0].display_name == "DeadloC5ociety (C5)"
+
+
+@pytest.mark.parametrize("use_fallback", [False, True])
+def test_html_named_team_label_is_parser_independent(use_fallback: bool, monkeypatch) -> None:
+    fixture = Path(__file__).parent / "fixtures" / "scoreboard_sample.html"
+    if use_fallback:
+        monkeypatch.setattr(scoreboard, "_rows_from_pandas", lambda html: None)
+
+    rows = parse_scoreboard_html(fixture.read_text(encoding="utf-8"), datetime(2026, 11, 3, tzinfo=timezone.utc))
+
+    assert rows[0].team_label == "Foo (B2)"
+    assert rows[0].display_name == "Foo (B2)"
+
+
 def test_row_normalization() -> None:
     scrape_time = datetime(2026, 4, 20, tzinfo=timezone.utc)
     row = normalize_row(
