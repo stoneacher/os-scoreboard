@@ -31,6 +31,12 @@ services:
     build:
       context: ./scraper
     restart: unless-stopped
+    # The VPS provider's resolver intermittently takes 1-4s per lookup, which
+    # shows up as slow scrapes. Service names (influxdb) still resolve via
+    # Docker's embedded DNS; these are only used for external lookups.
+    dns:
+      - 1.1.1.1
+      - 9.9.9.9
     env_file:
       - .env
     depends_on:
