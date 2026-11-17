@@ -3,4 +3,4 @@ influxdb-client==1.48.0
 lxml==6.1.0
 pandas==2.2.3
 pytest==9.0.3
-requests==2.32.3
+requests==2.33.0
