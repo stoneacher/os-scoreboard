@@ -1,0 +1,80 @@
+name: image
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  IMAGE: ghcr.io/${{ github.repository_owner }}/os-scoreboard-scraper
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write # push to GHCR
+      id-token: write # keyless cosign signing + provenance
+      attestations: write
+    steps:
+      - uses: actions/checkout@v7
+
+      # Tag scheme consumed by Flux's ImagePolicy in infra-cd:
+      #   main-<sha7>-<unix-ts>  (newest timestamp wins)
+      - name: Compute tag
+        id: tag
+        run: echo "value=main-${GITHUB_SHA::7}-$(date +%s)" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/metadata-action@v6
+        id: meta
+        with:
+          images: ${{ env.IMAGE }}
+          tags: |
+            type=raw,value=${{ steps.tag.outputs.value }},enable={{is_default_branch}}
+            type=semver,pattern={{version}}
+            type=ref,event=pr
+
+      - uses: docker/setup-buildx-action@v4
+
+      - uses: docker/login-action@v4
+        if: github.event_name != 'pull_request'
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/build-push-action@v7
+        id: build
+        with:
+          context: ./scraper
+          file: ./scraper/Dockerfile
+          platforms: linux/amd64
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          provenance: mode=max
+          sbom: true
+
+      - uses: sigstore/cosign-installer@v4.1.3
+        if: github.event_name != 'pull_request'
+
+      - name: Sign image (keyless)
+        if: github.event_name != 'pull_request'
+        run: cosign sign --yes "${IMAGE}@${{ steps.build.outputs.digest }}"
+
+      - uses: actions/attest-build-provenance@v4
+        if: github.event_name != 'pull_request'
+        with:
+          subject-name: ${{ env.IMAGE }}
+          subject-digest: ${{ steps.build.outputs.digest }}
+          push-to-registry: true
