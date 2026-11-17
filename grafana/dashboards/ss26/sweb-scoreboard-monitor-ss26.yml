@@ -1,0 +1,1854 @@
+apiVersion: dashboard.grafana.app/v2
+kind: Dashboard
+metadata:
+  name: sweb-scoreboard-monitor
+spec:
+  annotations:
+    - kind: AnnotationQuery
+      spec:
+        builtIn: true
+        enable: true
+        hide: true
+        iconColor: rgba(0, 211, 255, 1)
+        name: Annotations & Alerts
+        query:
+          datasource:
+            name: '-- Grafana --'
+          group: grafana
+          kind: DataQuery
+          spec:
+            limit: 100
+            matchAny: false
+            tags: []
+            type: dashboard
+          version: v0
+    - kind: AnnotationQuery
+      spec:
+        enable: true
+        hide: true
+        iconColor: orange
+        mappings:
+          time:
+            source: field
+            value: _time
+          timeEnd:
+            source: field
+            value: _end
+        name: Parsing Issue Info
+        query:
+          datasource:
+            name: influxdb
+          group: influxdb
+          kind: DataQuery
+          spec:
+            query: |2
+                import "array"
+
+                array.from(rows: [{
+                  _time: 2026-04-24T15:10:00Z,
+                  _end:  2026-04-28T13:10:00Z,
+                  text:  "Testsystem stopped showing some TeamIDs in parentheses, so the regex no longer matched and InfluxDB could not assign scraped data to the correct TeamID.",
+                  tags:  "parser,bug"
+                }])
+            refId: Anno
+          version: v0
+    - kind: AnnotationQuery
+      spec:
+        enable: true
+        hide: true
+        iconColor: green
+        mappings:
+          tags:
+            source: field
+            value: tags
+          text:
+            source: field
+            value: text
+          time:
+            source: field
+            value: _time
+          timeEnd:
+            source: field
+            value: _end
+        name: Deadline A1
+        query:
+          datasource:
+            name: influxdb
+          group: influxdb
+          kind: DataQuery
+          spec:
+            query: |2-
+                import "array"
+
+                array.from(rows: [{
+                  _time: 2026-04-24T10:00:00Z,
+                  _end:  2026-04-24T16:00:00Z,
+                  text:  "Submission Deadline A1",
+                  tags:  "deadline"
+                }])
+            refId: Anno
+          version: v0
+    - kind: AnnotationQuery
+      spec:
+        enable: true
+        hide: true
+        iconColor: green
+        mappings:
+          tags:
+            source: field
+            value: tags
+          text:
+            source: field
+            value: text
+          time:
+            source: field
+            value: _time
+        name: Testystem Change for A2 Design Discussion
+        query:
+          datasource:
+            name: influxdb
+          group: influxdb
+          kind: DataQuery
+          spec:
+            query: |2-
+                import "array"
+
+                array.from(rows: [{
+                  _time: 2026-05-11T09:30:00Z,
+                  _end:  2026-05-11T10:30:00Z,
+                  text:  "Testystem switch to A2 Design Discussion",
+                  tags:  "tags"
+                }])
+            refId: Anno
+          version: v0
+    - kind: AnnotationQuery
+      spec:
+        enable: true
+        hide: true
+        iconColor: green
+        mappings:
+          tags:
+            source: field
+            value: tags
+          text:
+            source: field
+            value: text
+          time:
+            source: field
+            value: _time
+        name: Scrape change (60>30m)
+        query:
+          datasource:
+            name: influxdb
+          group: influxdb
+          kind: DataQuery
+          spec:
+            query: |2
+                import "array"
+
+                array.from(rows: [{
+                  _time: 2026-05-18T14:25:00Z,
+                  _end:  2026-05-18T14:30:00Z,
+                  text:  "changed 'heartbeat' scrape interval from 1hr to 30 mins.",
+                  tags:  "scraper"
+                }])
+            refId: Anno
+          version: v0
+    - kind: AnnotationQuery
+      spec:
+        enable: true
+        hide: true
+        iconColor: red
+        mappings:
+          tags:
+            source: field
+            value: tags
+          text:
+            source: field
+            value: text
+          time:
+            source: field
+            value: _time
+          timeEnd:
+            source: field
+            value: _end
+        name: Testsystem down
+        query:
+          datasource:
+            name: influxdb
+          group: influxdb
+          kind: DataQuery
+          spec:
+            query: |2-
+                import "array"
+
+                array.from(rows: [{
+                  _time: 2026-06-04T10:45:00Z,
+                  _end:  2026-06-04T10:51:00Z,
+                  text:  "Testsystem was down",
+                  tags:  "outage"
+                }])
+            refId: Anno
+          version: v0
+    - kind: AnnotationQuery
+      spec:
+        enable: false
+        hide: false
+        iconColor: green
+        name: Git commits
+        query:
+          datasource:
+            name: influxdb
+          group: influxdb
+          kind: DataQuery
+          spec:
+            query: |-
+              from(bucket: "${bucket}")
+                  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
+                  |> filter(fn: (r) => r._measurement == "git_commits")
+                  |> filter(fn: (r) => r._field == "message" or r._field == "commit_hash" or r._field == "author")
+                  |> pivot(rowKey: ["_time"], columnKey: ["_field"], valueColumn: "_value")
+                  |> map(fn: (r) => ({
+                      _time: r._time,
+                      text: "[" + r.commit_hash + "] " + r.author + ": " + r.message,
+                      tags: "commit"
+                  }))
+            refId: Anno
+          version: v0
+  cursorSync: Crosshair
+  editable: true
+  elements:
+    panel-1:
+      kind: Panel
+      spec:
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  hidden: false
+                  query:
+                    datasource:
+                      name: influxdb
+                    group: influxdb
+                    kind: DataQuery
+                    spec:
+                      query: |-
+                        from(bucket: "${bucket}")
+                          |> range(start: -7d)
+                          |> filter(fn: (r) => r._measurement == "scraper_health" and r._field == "rows_parsed")
+                          |> group()
+                          |> last()
+                          |> map(fn: (r) => ({_time: now(), _value: float(v: uint(v: now()) - uint(v: r._time)) / 1000000000.0, _field: "last_scrape_age_seconds"}))
+                    version: v0
+                  refId: A
+            queryOptions: {}
+            transformations: []
+        description: scrapes for changes every 60 seconds. Global update (regardless of changes) every 30m.
+        id: 1
+        links: []
+        title: Last Scrape Age
+        vizConfig:
+          group: stat
+          kind: VizConfig
+          spec:
+            fieldConfig:
+              defaults:
+                color:
+                  mode: thresholds
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - color: green
+                      value: 0
+                    - color: yellow
+                      value: 50
+                    - color: red
+                      value: 60
+                unit: s
+              overrides: []
+            options:
+              colorMode: value
+              graphMode: area
+              justifyMode: auto
+              orientation: auto
+              percentChangeColorMode: standard
+              reduceOptions:
+                calcs:
+                  - lastNotNull
+                fields: ''
+                values: false
+              showPercentChange: false
+              textMode: auto
+              wideLayout: true
+          version: 13.3.0
+    panel-10:
+      kind: Panel
+      spec:
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  hidden: false
+                  query:
+                    datasource:
+                      name: influxdb
+                    group: influxdb
+                    kind: DataQuery
+                    spec:
+                      query: |-
+                        from(bucket: "${bucket}")
+                          |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
+                          |> filter(fn: (r) => r._measurement == "team_scoreboard" and r._field == "queue_running_percent")
+                          |> filter(fn: (r) => exists r.team_id and r.team_id =~ /^${team_id:regex}$/)
+                          |> group(columns: ["display_name"])
+                          |> aggregateWindow(every: v.windowPeriod, fn: last, createEmpty: false)
+                          |> map(fn: (r) => ({r with _field: r.display_name}))
+                          |> keep(columns: ["_time", "_value", "_field"])
+                          |> group(columns: ["_field"])
+                    version: v0
+                  refId: A
+            queryOptions: {}
+            transformations: []
+        description: ''
+        id: 10
+        links: []
+        title: Testsystem running progress
+        vizConfig:
+          group: timeseries
+          kind: VizConfig
+          spec:
+            fieldConfig:
+              defaults:
+                color:
+                  mode: palette-classic
+                custom:
+                  axisBorderShow: false
+                  axisCenteredZero: false
+                  axisColorMode: text
+                  axisLabel: ''
+                  axisPlacement: auto
+                  barAlignment: 0
+                  barWidthFactor: 0.6
+                  drawStyle: line
+                  fillOpacity: 10
+                  gradientMode: none
+                  hideFrom:
+                    legend: false
+                    tooltip: false
+                    viz: false
+                  insertNulls: 360000
+                  lineInterpolation: stepAfter
+                  lineWidth: 2
+                  pointSize: 3
+                  scaleDistribution:
+                    type: linear
+                  showPoints: auto
+                  showValues: false
+                  spanNulls: false
+                  stacking:
+                    group: A
+                    mode: none
+                  thresholdsStyle:
+                    mode: 'off'
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - color: green
+                      value: 0
+                unit: percent
+              overrides: []
+            options:
+              legend:
+                calcs:
+                  - count
+                displayMode: table
+                placement: right
+                showLegend: true
+              tooltip:
+                hideZeros: false
+                mode: multi
+                sort: desc
+          version: 13.3.0
+    panel-11:
+      kind: Panel
+      spec:
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  hidden: false
+                  query:
+                    datasource:
+                      name: influxdb
+                    group: influxdb
+                    kind: DataQuery
+                    spec:
+                      query: |-
+                        names = from(bucket: "${bucket}")
+                          |> range(start: 0)
+                          |> filter(fn: (r) => r._measurement == "team_scoreboard" and r._field == "rank")
+                          |> filter(fn: (r) => exists r.team_id and r.team_id =~ /^${team_id:regex}$/)
+                          |> filter(fn: (r) => not exists r.submission_type or r.submission_type =~ /^${submission_type:regex}$/)
+                          |> keep(columns: ["_time", "team_id", "display_name"])
+                          |> group(columns: ["team_id", "display_name"])
+                          |> reduce(
+                            identity: {first_seen: now(), last_seen: time(v: 0)},
+                            fn: (r, accumulator) => ({
+                              first_seen: if r._time < accumulator.first_seen then r._time else accumulator.first_seen,
+                              last_seen: if r._time > accumulator.last_seen then r._time else accumulator.last_seen
+                            })
+                          )
+                          |> group(columns: ["team_id"])
+
+                        nameStatus = names
+                          |> reduce(
+                            identity: {has_name: false},
+                            fn: (r, accumulator) => ({has_name: accumulator.has_name or r.display_name != r.team_id})
+                          )
+
+                        join(tables: {names: names, status: nameStatus}, on: ["team_id"])
+                          |> filter(fn: (r) => r.display_name != r.team_id or not r.has_name)
+                          |> drop(columns: ["has_name"])
+                          |> group(columns: ["team_id"])
+                          |> sort(columns: ["first_seen", "display_name"])
+                          |> reduce(
+                            identity: {name_count: 0, names: ""},
+                            fn: (r, accumulator) => ({
+                              name_count: accumulator.name_count + (if r.display_name == r.team_id then 0 else 1),
+                              names: accumulator.names + (if accumulator.names == "" then "" else " • ") + r.display_name
+                            })
+                          )
+                          |> group()
+                          |> sort(columns: ["name_count", "team_id"], desc: true)
+                    version: v0
+                  refId: A
+            queryOptions: {}
+            transformations:
+              - group: organize
+                kind: Transformation
+                spec:
+                  options:
+                    excludeByName: {}
+                    indexByName:
+                      name_count: 1
+                      names: 2
+                      team_id: 0
+                    renameByName:
+                      name_count: Distinct names
+                      names: Names (first observed order)
+                      team_id: Team ID
+        description: Distinct scoreboard display names per stable team ID across all retained data in the selected semester bucket, independent of the dashboard time range. Respects the teamID and submission_type filters. An ID-only label is shown only when no other name is observed for that team within these filters, and contributes zero to the distinct name count. Reusing a previous name does not increase the count; the name list is ordered by first observation, not a sequence of every rename.
+        id: 11
+        links: []
+        title: Team Name Summary
+        vizConfig:
+          group: table
+          kind: VizConfig
+          spec:
+            fieldConfig:
+              defaults:
+                custom:
+                  align: auto
+                  cellOptions:
+                    type: auto
+                  footer:
+                    reducers: []
+                  inspect: false
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - color: green
+                      value: 0
+                    - color: red
+                      value: 80
+              overrides:
+                - matcher:
+                    id: byName
+                    options: Team ID
+                  properties:
+                    - id: custom.width
+                      value: 75
+                - matcher:
+                    id: byName
+                    options: Distinct names
+                  properties:
+                    - id: custom.width
+                      value: 140
+            options:
+              cellHeight: sm
+              enablePagination: true
+              showHeader: true
+              sortBy:
+                - desc: true
+                  displayName: Distinct names
+              zebraStriping: false
+          version: 13.3.0
+    panel-12:
+      kind: Panel
+      spec:
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  hidden: false
+                  query:
+                    datasource:
+                      name: influxdb
+                    group: influxdb
+                    kind: DataQuery
+                    spec:
+                      query: |-
+                        names = from(bucket: "${bucket}")
+                          |> range(start: 0)
+                          |> filter(fn: (r) => r._measurement == "team_scoreboard" and r._field == "rank")
+                          |> filter(fn: (r) => exists r.team_id and r.team_id =~ /^${team_id:regex}$/)
+                          |> filter(fn: (r) => not exists r.submission_type or r.submission_type =~ /^${submission_type:regex}$/)
+                          |> keep(columns: ["_time", "team_id", "display_name"])
+                          |> group(columns: ["team_id", "display_name"])
+                          |> reduce(
+                            identity: {first_seen: now(), last_seen: time(v: 0)},
+                            fn: (r, accumulator) => ({
+                              first_seen: if r._time < accumulator.first_seen then r._time else accumulator.first_seen,
+                              last_seen: if r._time > accumulator.last_seen then r._time else accumulator.last_seen
+                            })
+                          )
+                          |> group(columns: ["team_id"])
+
+                        nameStatus = names
+                          |> reduce(
+                            identity: {has_name: false},
+                            fn: (r, accumulator) => ({has_name: accumulator.has_name or r.display_name != r.team_id})
+                          )
+
+                        join(tables: {names: names, status: nameStatus}, on: ["team_id"])
+                          |> filter(fn: (r) => r.display_name != r.team_id or not r.has_name)
+                          |> drop(columns: ["has_name"])
+                          |> group()
+                          |> sort(columns: ["team_id", "first_seen", "display_name"])
+                    version: v0
+                  refId: A
+            queryOptions: {}
+            transformations:
+              - group: organize
+                kind: Transformation
+                spec:
+                  options:
+                    excludeByName: {}
+                    indexByName:
+                      display_name: 1
+                      first_seen: 2
+                      last_seen: 3
+                      team_id: 0
+                    renameByName:
+                      display_name: Observed name
+                      first_seen: First observed
+                      last_seen: Last observed
+                      team_id: Team ID
+        description: One row per stable team ID and distinct scoreboard display name across all retained data in the selected semester bucket, independent of the dashboard time range. Respects the teamID and submission_type filters. First/last observed are scrape timestamps, not exact rename times. Repeated uses of the same name share one row and may include gaps. Anonymous teams without a stable ID are excluded. An ID-only label is included only when no other name is observed for that team within these filters.
+        id: 12
+        links: []
+        title: Team Name History
+        vizConfig:
+          group: table
+          kind: VizConfig
+          spec:
+            fieldConfig:
+              defaults:
+                custom:
+                  align: auto
+                  cellOptions:
+                    type: auto
+                  footer:
+                    reducers: []
+                  inspect: false
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - color: green
+                      value: 0
+                    - color: red
+                      value: 80
+              overrides:
+                - matcher:
+                    id: byName
+                    options: first_seen
+                  properties:
+                    - id: unit
+                      value: dateTimeAsIso
+                - matcher:
+                    id: byName
+                    options: last_seen
+                  properties:
+                    - id: unit
+                      value: dateTimeAsIso
+                - matcher:
+                    id: byName
+                    options: Team ID
+                  properties:
+                    - id: custom.width
+                      value: 75
+                - matcher:
+                    id: byName
+                    options: First observed
+                  properties:
+                    - id: custom.width
+                      value: 165
+                - matcher:
+                    id: byName
+                    options: Last observed
+                  properties:
+                    - id: custom.width
+                      value: 165
+            options:
+              cellHeight: sm
+              enablePagination: true
+              showHeader: true
+              sortBy: []
+              zebraStriping: false
+          version: 13.3.0
+    panel-2:
+      kind: Panel
+      spec:
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  hidden: false
+                  query:
+                    datasource:
+                      name: influxdb
+                    group: influxdb
+                    kind: DataQuery
+                    spec:
+                      query: |-
+                        from(bucket: "${bucket}")
+                          |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
+                          |> filter(fn: (r) => r._measurement == "team_scoreboard" and r._field == "score")
+                          |> filter(fn: (r) => exists r.team_id and r.team_id =~ /^${team_id:regex}$/)
+                          |> filter(fn: (r) => not exists r.submission_type or r.submission_type =~ /^${submission_type:regex}$/)     
+                          |> group(columns: ["display_name"])
+                          |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: true)
+                          |> yield(name: "score")
+                    version: v0
+                  refId: A
+            queryOptions: {}
+            transformations: []
+        description: ''
+        id: 2
+        links: []
+        title: Score Over Time
+        vizConfig:
+          group: timeseries
+          kind: VizConfig
+          spec:
+            fieldConfig:
+              defaults:
+                color:
+                  mode: palette-classic
+                custom:
+                  axisBorderShow: false
+                  axisCenteredZero: false
+                  axisColorMode: text
+                  axisLabel: ''
+                  axisPlacement: auto
+                  barAlignment: 0
+                  barWidthFactor: 0.6
+                  drawStyle: line
+                  fillOpacity: 0
+                  gradientMode: none
+                  hideFrom:
+                    legend: false
+                    tooltip: false
+                    viz: false
+                  insertNulls: 4800000
+                  lineInterpolation: smooth
+                  lineStyle:
+                    fill: solid
+                  lineWidth: 1
+                  pointSize: 4
+                  scaleDistribution:
+                    type: linear
+                  showPoints: auto
+                  showValues: false
+                  spanNulls: true
+                  stacking:
+                    group: A
+                    mode: none
+                  thresholdsStyle:
+                    mode: 'off'
+                max: 100
+                min: 0
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - color: green
+                      value: 0
+                unit: percent
+              overrides: []
+            options:
+              legend:
+                calcs:
+                  - lastNotNull
+                displayMode: table
+                placement: right
+                showLegend: true
+                sortBy: Last *
+                sortDesc: true
+              tooltip:
+                hideZeros: false
+                mode: multi
+                sort: desc
+          version: 13.3.0
+    panel-3:
+      kind: Panel
+      spec:
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  hidden: false
+                  query:
+                    datasource:
+                      name: influxdb
+                    group: influxdb
+                    kind: DataQuery
+                    spec:
+                      query: |-
+                        from(bucket: "${bucket}")
+                          |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
+                          |> filter(fn: (r) => r._measurement == "team_scoreboard" and r._field == "rank")
+                          |> filter(fn: (r) => exists r.team_id and r.team_id =~ /^${team_id:regex}$/)
+                          |> filter(fn: (r) => not exists r.submission_type or r.submission_type =~ /^${submission_type:regex}$/)     
+                          |> group(columns: ["display_name"])
+                          |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: true)
+                          |> yield(name: "rank")
+                    version: v0
+                  refId: A
+            queryOptions: {}
+            transformations: []
+        description: empty Lines/Missing ranks are due to anonymous teams which are not tracked here.
+        id: 3
+        links: []
+        title: Rank Over Time
+        vizConfig:
+          group: timeseries
+          kind: VizConfig
+          spec:
+            fieldConfig:
+              defaults:
+                color:
+                  mode: palette-classic
+                custom:
+                  axisBorderShow: false
+                  axisCenteredZero: false
+                  axisColorMode: text
+                  axisLabel: ''
+                  axisPlacement: auto
+                  barAlignment: 0
+                  barWidthFactor: 0.6
+                  drawStyle: line
+                  fillOpacity: 0
+                  gradientMode: none
+                  hideFrom:
+                    legend: false
+                    tooltip: false
+                    viz: false
+                  insertNulls: 4500000
+                  lineInterpolation: smooth
+                  lineWidth: 1
+                  pointSize: 4
+                  scaleDistribution:
+                    type: linear
+                  showPoints: auto
+                  showValues: false
+                  spanNulls: true
+                  stacking:
+                    group: A
+                    mode: none
+                  thresholdsStyle:
+                    mode: 'off'
+                decimals: 0
+                max: -1
+                min: -60
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - color: green
+                      value: 0
+              overrides:
+                - matcher:
+                    id: byName
+                    options: Value
+                  properties:
+                    - id: custom.transform
+                      value: negative-Y
+            options:
+              legend:
+                calcs:
+                  - lastNotNull
+                displayMode: table
+                placement: right
+                showLegend: true
+                sortBy: Last *
+                sortDesc: false
+              tooltip:
+                hideZeros: false
+                mode: multi
+                sort: asc
+          version: 13.3.0
+    panel-4:
+      kind: Panel
+      spec:
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  hidden: false
+                  query:
+                    datasource:
+                      name: influxdb
+                    group: influxdb
+                    kind: DataQuery
+                    spec:
+                      query: |-
+                        from(bucket: "${bucket}")
+                          |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
+                          |> filter(fn: (r) => r._measurement == "team_scoreboard")
+                          |> filter(fn: (r) => exists r.team_id and r.team_id =~ /^${team_id:regex}$/)
+                          |> filter(fn: (r) =>
+                            r._field == "rank" or
+                            r._field == "score" or
+                            r._field == "threads" or
+                            r._field == "fork_exec" or
+                            r._field == "swapping" or
+                            r._field == "shm" or
+                            r._field == "other" or
+                            r._field == "avg_5d" or
+                            r._field == "up_count" or
+                            r._field == "tw" or
+                            r._field == "perf" or
+                            r._field == "build_ok" or
+                            r._field == "boot_ok"
+                          )
+                          |> group(columns: ["team_id", "display_name", "_field", "submission1"])
+                          |> last()
+                          |> pivot(
+                            rowKey: ["team_id", "display_name", "submission1", "_time"],
+                            columnKey: ["_field"],
+                            valueColumn: "_value"
+                          )
+                          |> group()
+                          |> keep(columns: [
+                            "rank",
+                            "team_id",
+                            "display_name",
+                            "score",
+                            "threads",
+                            "fork_exec",
+                            "swapping",
+                            "shm",
+                            "other",
+                            "avg_5d",
+                            "up_count",
+                            "tw",
+                            "perf",
+                            "build_ok",
+                            "boot_ok",
+                            "submission1",
+                            "_time"
+                          ])
+                          |> sort(columns: ["rank"])
+                    version: v0
+                  refId: A
+              - kind: PanelQuery
+                spec:
+                  hidden: true
+                  query:
+                    datasource:
+                      name: influxdb
+                    group: influxdb
+                    kind: DataQuery
+                    spec:
+                      query: |2
+                          from(bucket: "${bucket}")
+                            |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
+                            |> filter(fn: (r) => r._measurement == "team_scoreboard")
+                            |> filter(fn: (r) => exists r.team_id and r.team_id =~ /^${team_id:regex}$/)
+                            |> filter(fn: (r) => r._field == "rank" or r._field == "score" or r._field == "threads" or r._field == "fork_exec" or r._field == "other" or r._field == "avg_5d" or r._field == "up_count" or
+                          r._field == "tw" or r._field == "perf" or r._field == "build_ok" or r._field == "boot_ok")
+                            |> group(columns: ["team_id", "display_name", "_field", "submission1"])
+                            |> last()
+                            |> pivot(rowKey: ["team_id", "display_name", "submission1"], columnKey: ["_field"], valueColumn: "_value")
+                            |> group()
+                            |> keep(columns: ["rank", "team_id", "display_name", "score", "threads", "fork_exec", "other", "avg_5d", "up_count", "tw", "perf", "build_ok", "boot_ok", "submission1"])
+                            |> sort(columns: ["rank"])
+                    version: v0
+                  refId: B
+            queryOptions: {}
+            transformations:
+              - group: organize
+                kind: Transformation
+                spec:
+                  options:
+                    excludeByName: {}
+                    includeByName: {}
+                    indexByName:
+                      _time: 14
+                      avg_5d: 9
+                      boot_ok: 4
+                      build_ok: 3
+                      display_name: 1
+                      other: 8
+                      perf: 12
+                      rank: 0
+                      score: 5
+                      shm: 7
+                      submission1: 13
+                      swapping: 6
+                      team_id: 2
+                      tw: 11
+                      up_count: 10
+                    renameByName:
+                      _time: timestamp
+              - group: convertFieldType
+                kind: Transformation
+                spec:
+                  options:
+                    conversions:
+                      - destinationType: other
+                        enumConfig:
+                          text:
+                            - 75.3
+                            - 57.8
+                        targetField: score
+                    fields: {}
+        description: ''
+        id: 4
+        links: []
+        title: Latest Standings For Selected Stable Teams
+        vizConfig:
+          group: table
+          kind: VizConfig
+          spec:
+            fieldConfig:
+              defaults:
+                color:
+                  mode: thresholds
+                custom:
+                  align: auto
+                  cellOptions:
+                    type: auto
+                  filterable: false
+                  footer:
+                    reducers: []
+                  inspect: false
+                  wrapText: false
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - color: green
+                      value: 0
+              overrides:
+                - matcher:
+                    id: byName
+                    options: avg_5d
+                  properties:
+                    - id: custom.width
+                      value: 65
+                    - id: unit
+                      value: percent
+                - matcher:
+                    id: byName
+                    options: boot_ok
+                  properties:
+                    - id: custom.width
+                      value: 71
+                - matcher:
+                    id: byName
+                    options: team_id
+                  properties:
+                    - id: custom.width
+                      value: 71
+                - matcher:
+                    id: byName
+                    options: submission1
+                  properties:
+                    - id: custom.width
+                      value: 98
+                - matcher:
+                    id: byName
+                    options: display_name
+                  properties:
+                    - id: custom.width
+                      value: 264
+                - matcher:
+                    id: byName
+                    options: build_ok
+                  properties:
+                    - id: custom.width
+                      value: 73
+                - matcher:
+                    id: byName
+                    options: perf
+                  properties:
+                    - id: custom.width
+                      value: 52
+                    - id: unit
+                      value: percent
+                - matcher:
+                    id: byName
+                    options: rank
+                  properties:
+                    - id: custom.width
+                      value: 17
+                - matcher:
+                    id: byName
+                    options: score
+                  properties:
+                    - id: custom.width
+                      value: 58
+                    - id: unit
+                      value: percent
+                - matcher:
+                    id: byName
+                    options: tw
+                  properties:
+                    - id: custom.width
+                      value: 61
+                    - id: unit
+                      value: percent
+                - matcher:
+                    id: byName
+                    options: up_count
+                  properties:
+                    - id: custom.width
+                      value: 79
+                - matcher:
+                    id: byName
+                    options: fork_exec
+                  properties:
+                    - id: custom.width
+                      value: 84
+                - matcher:
+                    id: byName
+                    options: other
+                  properties:
+                    - id: custom.width
+                      value: 65
+                    - id: unit
+                      value: percent
+                - matcher:
+                    id: byName
+                    options: threads
+                  properties:
+                    - id: custom.width
+                      value: 69
+                - matcher:
+                    id: byName
+                    options: _time
+                  properties:
+                    - id: custom.width
+                      value: 241
+                - matcher:
+                    id: byName
+                    options: timestamp
+                  properties:
+                    - id: custom.width
+                      value: 167
+                - matcher:
+                    id: byName
+                    options: swapping
+                  properties:
+                    - id: custom.width
+                      value: 82
+                    - id: unit
+                      value: percent
+                - matcher:
+                    id: byName
+                    options: shm
+                  properties:
+                    - id: custom.width
+                      value: 56
+                    - id: unit
+                      value: percent
+            options:
+              cellHeight: sm
+              enablePagination: false
+              showHeader: true
+              sortBy:
+                - desc: false
+                  displayName: team_id
+              zebraStriping: false
+          version: 13.3.0
+    panel-5:
+      kind: Panel
+      spec:
+        data:
+          kind: QueryGroup
+          spec:
+            queries: []
+            queryOptions: {}
+            transformations: []
+        description: 'Shows health of the whole stack and the Testystem Website. (Alerting is set to send me a push notification via Discord, so bare with me, doing this in my free time) '
+        id: 5
+        links: []
+        title: Stack Health
+        vizConfig:
+          group: alertlist
+          kind: VizConfig
+          spec:
+            fieldConfig:
+              defaults: {}
+              overrides: []
+            options:
+              alertInstanceLabelFilter: ''
+              alertName: ''
+              dashboardAlerts: false
+              datasource: '-- Grafana --'
+              folder: ''
+              groupBy: []
+              groupMode: default
+              maxItems: 20
+              showInactiveAlerts: false
+              sortOrder: 5
+              statColorMode: none
+              statThresholds:
+                mode: absolute
+                steps:
+                  - color: green
+                    value: 0
+                  - color: red
+                    value: 80
+              statValueMappings: []
+              stateFilter:
+                error: true
+                firing: true
+                noData: true
+                normal: true
+                pending: true
+                recovering: true
+              viewMode: list
+          version: 13.3.0
+    panel-6:
+      kind: Panel
+      spec:
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  hidden: false
+                  query:
+                    datasource:
+                      name: influxdb
+                    group: influxdb
+                    kind: DataQuery
+                    spec:
+                      query: |2-
+                         from(bucket: "${bucket}")
+                            |> range(start: 0)
+                            |> filter(fn: (r) => r._measurement == "team_scoreboard" and r._field == "rank")
+                            |> filter(fn: (r) => exists r.submission_type and r.submission_type =~ /^${submission_type:regex}$/)
+                            |> filter(fn: (r) => r.submission1 == "OK")
+                            |> group(columns: ["submission_type", "team_id"])
+                            |> last()
+                            |> group(columns: ["submission_type"])
+                            |> count()
+                            |> map(fn: (r) => ({_time: now(), _field: "OK Teams", submission_type: r.submission_type, _value: r._value}))
+                            |> group()
+                    version: v0
+                  refId: A
+              - kind: PanelQuery
+                spec:
+                  hidden: false
+                  query:
+                    datasource:
+                      name: influxdb
+                    group: influxdb
+                    kind: DataQuery
+                    spec:
+                      query: |-
+                        from(bucket: "${bucket}")
+                            |> range(start: 0)
+                            |> filter(fn: (r) => r._measurement == "team_scoreboard" and r._field == "rank")
+                            |> filter(fn: (r) => exists r.submission_type and r.submission_type =~ /^${submission_type:regex}$/)
+                            |> group(columns: ["submission_type", "team_id"])
+                            |> last()
+                            |> group(columns: ["submission_type"])
+                            |> count()
+                            |> map(fn: (r) => ({_time: now(), _field: "Total Teams", submission_type: r.submission_type, _value: r._value}))
+                            |> group()
+                    version: v0
+                  refId: B
+            queryOptions: {}
+            transformations:
+              - group: joinByField
+                kind: Transformation
+                spec:
+                  options:
+                    byField: submission_type
+                    mode: outer
+        description: change the SubmissionID at the top to choose specific Submission Tag.
+        id: 6
+        links: []
+        title: Number of Tags per Submission
+        vizConfig:
+          group: barchart
+          kind: VizConfig
+          spec:
+            fieldConfig:
+              defaults:
+                color:
+                  mode: thresholds
+                custom:
+                  axisBorderShow: false
+                  axisCenteredZero: false
+                  axisColorMode: text
+                  axisLabel: ''
+                  axisPlacement: auto
+                  fillOpacity: 80
+                  gradientMode: none
+                  hideFrom:
+                    legend: false
+                    tooltip: false
+                    viz: false
+                  lineWidth: 1
+                  scaleDistribution:
+                    type: linear
+                  thresholdsStyle:
+                    mode: 'off'
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - color: green
+                      value: 0
+              overrides:
+                - matcher:
+                    id: byName
+                    options: _value 1
+                  properties:
+                    - id: displayName
+                      value: Tagged teams
+                - matcher:
+                    id: byName
+                    options: _value 2
+                  properties:
+                    - id: displayName
+                      value: Tracked teams
+                    - id: color
+                      value:
+                        mode: palette-classic
+            options:
+              barRadius: 0
+              barWidth: 0.97
+              fullHighlight: false
+              groupWidth: 0.7
+              legend:
+                calcs: []
+                displayMode: list
+                placement: bottom
+                showLegend: true
+              orientation: auto
+              showValue: auto
+              stacking: none
+              tooltip:
+                hideZeros: false
+                mode: single
+                sort: none
+              xTickLabelRotation: 0
+              xTickLabelSpacing: 0
+          version: 13.3.0
+    panel-7:
+      kind: Panel
+      spec:
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  hidden: false
+                  query:
+                    datasource:
+                      name: influxdb
+                    group: influxdb
+                    kind: DataQuery
+                    spec:
+                      query: |2-
+                          from(bucket: "${bucket}")
+                            |> range(start: 0)
+                            |> filter(fn: (r) => r._measurement == "team_scoreboard" and r._field == "rank")
+                            |> last()
+                            |> group()
+                            |> sort(columns: ["_time"])
+                            |> last()
+                            |> map(fn: (r) => ({_time: r._time, _value: r.submission_type}))
+                    version: v0
+                  refId: A
+            queryOptions: {}
+            transformations: []
+        description: ''
+        id: 7
+        links: []
+        title: Current Submission Tag
+        vizConfig:
+          group: stat
+          kind: VizConfig
+          spec:
+            fieldConfig:
+              defaults:
+                color:
+                  mode: palette-classic
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - color: green
+                      value: 0
+              overrides: []
+            options:
+              colorMode: value
+              graphMode: area
+              justifyMode: auto
+              orientation: horizontal
+              percentChangeColorMode: standard
+              reduceOptions:
+                calcs:
+                  - lastNotNull
+                fields: /^Value$/
+                values: false
+              showPercentChange: false
+              textMode: auto
+              wideLayout: true
+          version: 13.3.0
+    panel-8:
+      kind: Panel
+      spec:
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  hidden: false
+                  query:
+                    datasource:
+                      name: influxdb
+                    group: influxdb
+                    kind: DataQuery
+                    spec:
+                      query: |-
+                        currentType = from(bucket: "${bucket}")
+                            |> range(start: 0)
+                            |> filter(fn: (r) => r._measurement == "team_scoreboard" and r._field == "rank")
+                            |> last()
+                            |> group()
+                            |> sort(columns: ["_time"])
+                            |> last()
+                            |> findRecord(fn: (key) => true, idx: 0)
+
+                          from(bucket: "${bucket}")
+                            |> range(start: 0)
+                            |> filter(fn: (r) => r._measurement == "team_scoreboard" and r._field == "rank")
+                            |> filter(fn: (r) => r.submission_type == currentType.submission_type)
+                            |> group()
+                            |> first()
+                            |> map(fn: (r) => ({
+                                _time: now(),
+                                _value: float(v: uint(v: now()) - uint(v: r._time)) / 1000000000.0,
+                                _field: "active_since"
+                            }))
+                    version: v0
+                  refId: A
+              - kind: PanelQuery
+                spec:
+                  hidden: false
+                  query:
+                    datasource:
+                      name: influxdb
+                    group: influxdb
+                    kind: DataQuery
+                    spec:
+                      query: |2-
+                         currentType = from(bucket: "${bucket}")
+                            |> range(start: 0)
+                            |> filter(fn: (r) => r._measurement == "team_scoreboard" and r._field == "rank")
+                            |> last()
+                            |> group()
+                            |> sort(columns: ["_time"])
+                            |> last()
+                            |> findRecord(fn: (key) => true, idx: 0)
+
+                          from(bucket: "${bucket}")
+                            |> range(start: 0)
+                            |> filter(fn: (r) => r._measurement == "team_scoreboard" and r._field == "rank")
+                            |> filter(fn: (r) => r.submission_type == currentType.submission_type)
+                            |> group()
+                            |> first()
+                            |> map(fn: (r) => ({
+                                _time: now(),
+                                _value: float(v: uint(v: r._time)) / 1000000.0,
+                                _field: "first_seen"
+                            }))
+                    version: v0
+                  refId: B
+            queryOptions: {}
+            transformations:
+              - group: filterFieldsByName
+                kind: Transformation
+                spec:
+                  options:
+                    byVariable: false
+                    include:
+                      names:
+                        - _value
+        description: ''
+        id: 8
+        links: []
+        title: Age of current submissionID
+        vizConfig:
+          group: stat
+          kind: VizConfig
+          spec:
+            fieldConfig:
+              defaults:
+                color:
+                  mode: thresholds
+                fieldMinMax: false
+                thresholds:
+                  mode: absolute
+                  steps:
+                    - color: green
+                      value: 0
+                unit: dtdurations
+              overrides:
+                - matcher:
+                    id: byFrameRefID
+                    options: A
+                  properties:
+                    - id: unit
+                      value: dtdurations
+                - matcher:
+                    id: byFrameRefID
+                    options: B
+                  properties:
+                    - id: unit
+                      value: dateTimeAsIsoNoDateIfToday
+                    - id: color
+                      value:
+                        mode: fixed
+            options:
+              colorMode: value
+              graphMode: area
+              justifyMode: auto
+              orientation: horizontal
+              percentChangeColorMode: standard
+              reduceOptions:
+                calcs:
+                  - lastNotNull
+                fields: /.*/
+                values: false
+              showPercentChange: false
+              text: {}
+              textMode: value
+              wideLayout: true
+          version: 13.3.0
+    panel-9:
+      kind: Panel
+      spec:
+        data:
+          kind: QueryGroup
+          spec:
+            queries:
+              - kind: PanelQuery
+                spec:
+                  hidden: false
+                  query:
+                    datasource:
+                      name: influxdb
+                    group: influxdb
+                    kind: DataQuery
+                    spec:
+                      query: |2-
+                          from(bucket: "${bucket}")
+                            |> range(start: time(v: int(v: v.timeRangeStart) - int(v: 35m)), stop: v.timeRangeStop)
+                            |> filter(fn: (r) => r._measurement == "team_scoreboard" and r._field == "rank")
+                            |> filter(fn: (r) => exists r.submission_type and r.submission_type =~ /^${submission_type:regex}$/)
+                            |> filter(fn: (r) => r.submission1 == "OK")
+                            |> group(columns: ["submission_type", "team_id"])
+                            |> aggregateWindow(every: v.windowPeriod, period: 35m, fn: last, createEmpty: false)
+                            |> group(columns: ["submission_type"])
+                            |> aggregateWindow(every: v.windowPeriod, fn: count, createEmpty: false)
+                            |> filter(fn: (r) => r._value > 0)
+                    version: v0
+                  refId: A
+              - kind: PanelQuery
+                spec:
+                  hidden: true
+                  query:
+                    datasource:
+                      name: influxdb
+                    group: influxdb
+                    kind: DataQuery
+                    spec:
+                      query: |-
+                        from(bucket: "${bucket}")
+                            |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
+                            |> filter(fn: (r) => r._measurement == "team_scoreboard" and r._field == "rank")
+                            |> filter(fn: (r) => exists r.submission_type and r.submission_type =~ /^${submission_type:regex}$/)
+                            |> group(columns: ["submission_type", "team_id"])
+                            |> aggregateWindow(every: v.windowPeriod, period: 35m, fn: last, createEmpty: false)
+                            |> group(columns: ["submission_type"])
+                            |> aggregateWindow(every: v.windowPeriod, fn: count, createEmpty: false)
+                    version: v0
+                  refId: B
+            queryOptions: {}
+            transformations: []
+        description: shows the amount of tagged submissions over time.
+        id: 9
+        links: []
+        title: Tags over time
+        vizConfig:
+          group: timeseries
+          kind: VizConfig
+          spec:
+            fieldConfig:
+              defaults:
+                color:
+                  mode: palette-classic
+                custom:
+                  axisBorderShow: false
+                  axisCenteredZero: false
+                  axisColorMode: text
+                  axisLabel: ''
+                  axisPlacement: auto
+                  axisSoftMax: 47
+                  barAlignment: 0
+                  barWidthFactor: 0.6
+                  drawStyle: line
+                  fillOpacity: 6
+                  gradientMode: none
+                  hideFrom:
+                    legend: false
+                    tooltip: false
+                    viz: false
+                  insertNulls: false
+                  lineInterpolation: linear
+                  lineWidth: 1
+                  pointSize: 5
+                  scaleDistribution:
+                    type: linear
+                  showPoints: auto
+                  showValues: false
+                  spanNulls: false
+                  stacking:
+                    group: A
+                    mode: none
+                  thresholdsStyle:
+                    mode: dashed+area
+                thresholds:
+                  mode: percentage
+                  steps:
+                    - color: red
+                      value: 0
+                    - color: orange
+                      value: 30
+                    - color: green
+                      value: 70
+              overrides:
+                - matcher:
+                    id: byFrameRefID
+                    options: A
+                  properties:
+                    - id: color
+                      value:
+                        mode: thresholds
+                - matcher:
+                    id: byFrameRefID
+                    options: B
+                  properties:
+                    - id: displayName
+                      value: Overall parsed teams
+                    - id: custom.lineStyle
+                      value:
+                        dash:
+                          - 0
+                          - 10
+                        fill: dot
+                    - id: custom.fillOpacity
+                      value: 0
+            options:
+              legend:
+                calcs: []
+                displayMode: list
+                placement: bottom
+                showLegend: true
+              tooltip:
+                hideZeros: false
+                mode: single
+                sort: none
+          version: 13.3.0
+  layout:
+    kind: GridLayout
+    spec:
+      items:
+        - kind: GridLayoutItem
+          spec:
+            element:
+              kind: ElementReference
+              name: panel-6
+            height: 8
+            width: 9
+            x: 0
+            'y': 0
+        - kind: GridLayoutItem
+          spec:
+            element:
+              kind: ElementReference
+              name: panel-7
+            height: 2
+            width: 6
+            x: 9
+            'y': 0
+        - kind: GridLayoutItem
+          spec:
+            element:
+              kind: ElementReference
+              name: panel-9
+            height: 8
+            width: 9
+            x: 15
+            'y': 0
+        - kind: GridLayoutItem
+          spec:
+            element:
+              kind: ElementReference
+              name: panel-8
+            height: 3
+            width: 6
+            x: 9
+            'y': 2
+        - kind: GridLayoutItem
+          spec:
+            element:
+              kind: ElementReference
+              name: panel-1
+            height: 3
+            width: 6
+            x: 9
+            'y': 5
+        - kind: GridLayoutItem
+          spec:
+            element:
+              kind: ElementReference
+              name: panel-3
+            height: 18
+            width: 24
+            x: 0
+            'y': 8
+        - kind: GridLayoutItem
+          spec:
+            element:
+              kind: ElementReference
+              name: panel-10
+            height: 5
+            width: 24
+            x: 0
+            'y': 26
+        - kind: GridLayoutItem
+          spec:
+            element:
+              kind: ElementReference
+              name: panel-2
+            height: 18
+            width: 24
+            x: 0
+            'y': 31
+        - kind: GridLayoutItem
+          spec:
+            element:
+              kind: ElementReference
+              name: panel-4
+            height: 5
+            width: 24
+            x: 0
+            'y': 49
+        - kind: GridLayoutItem
+          spec:
+            element:
+              kind: ElementReference
+              name: panel-11
+            height: 8
+            width: 12
+            x: 0
+            'y': 54
+        - kind: GridLayoutItem
+          spec:
+            element:
+              kind: ElementReference
+              name: panel-12
+            height: 8
+            width: 12
+            x: 12
+            'y': 54
+        - kind: GridLayoutItem
+          spec:
+            element:
+              kind: ElementReference
+              name: panel-5
+            height: 12
+            width: 24
+            x: 0
+            'y': 62
+  links: []
+  liveNow: false
+  preferences:
+    layout:
+      kind: GridLayout
+      spec:
+        items: []
+  preload: false
+  tags:
+    - scoreboard
+    - influxdb
+  timeSettings:
+    autoRefresh: 5m
+    autoRefreshIntervals:
+      - 5s
+      - 10s
+      - 30s
+      - 1m
+      - 5m
+      - 15m
+      - 30m
+      - 1h
+      - 2h
+      - 1d
+    fiscalYearStartMonth: 0
+    from: '2026-04-21T09:01:20.291Z'
+    hideTimepicker: false
+    timezone: browser
+    to: '2026-07-21T21:40:19.661Z'
+  title: Sweb Scoreboard Monitor
+  variables:
+    - kind: QueryVariable
+      spec:
+        allowCustomValue: true
+        current:
+          text: scoreboard-ss2026
+          value: scoreboard-ss2026
+        definition: |-
+          import "strings"
+
+          buckets()
+            |> filter(fn: (r) => r.name =~ /^scoreboard-(ss|ws)[0-9]{4}$/)
+            |> map(fn: (r) => ({_value: r.name, semester: strings.substring(v: r.name, start: 13, end: 17) + (if strings.hasPrefix(v: r.name, prefix: "scoreboard-ws") then "1" else "0")}))
+            |> sort(columns: ["semester"], desc: true)
+            |> keep(columns: ["_value"])
+        description: One bucket per semester (scoreboard-ssYYYY / scoreboard-wsYYYY). For past semesters, set the time range to that semester.
+        hide: dontHide
+        includeAll: false
+        label: Semester
+        multi: false
+        name: bucket
+        options: []
+        query:
+          datasource:
+            name: influxdb
+          group: influxdb
+          kind: DataQuery
+          spec:
+            __legacyStringValue: |-
+              import "strings"
+
+              buckets()
+                |> filter(fn: (r) => r.name =~ /^scoreboard-(ss|ws)[0-9]{4}$/)
+                |> map(fn: (r) => ({_value: r.name, semester: strings.substring(v: r.name, start: 13, end: 17) + (if strings.hasPrefix(v: r.name, prefix: "scoreboard-ws") then "1" else "0")}))
+                |> sort(columns: ["semester"], desc: true)
+                |> keep(columns: ["_value"])
+          version: v0
+        refresh: onDashboardLoad
+        regex: ''
+        regexApplyTo: value
+        skipUrlSync: false
+        sort: disabled
+    - kind: QueryVariable
+      spec:
+        allowCustomValue: false
+        current:
+          text: All
+          value: $__all
+        definition: |-
+          import "influxdata/influxdb/schema"
+          schema.tagValues(bucket: "${bucket}", tag: "team_id", predicate: (r) => r._measurement == "team_scoreboard", start: time(v: 0))
+        description: The team Identiefier on the testsystem
+        hide: dontHide
+        includeAll: true
+        label: teamID
+        multi: true
+        name: team_id
+        options: []
+        query:
+          datasource:
+            name: influxdb
+          group: influxdb
+          kind: DataQuery
+          spec:
+            __legacyStringValue: |-
+              import "influxdata/influxdb/schema"
+              schema.tagValues(bucket: "${bucket}", tag: "team_id", predicate: (r) => r._measurement == "team_scoreboard", start: time(v: 0))
+          version: v0
+        refresh: onTimeRangeChanged
+        regex: ''
+        regexApplyTo: value
+        skipUrlSync: false
+        sort: alphabeticalAsc
+    - kind: QueryVariable
+      spec:
+        allowCustomValue: false
+        current:
+          text: All
+          value: $__all
+        definition: |2-
+            import "influxdata/influxdb/schema"
+            schema.tagValues(bucket: "${bucket}", tag: "submission_type", predicate: (r) => r._measurement == "team_scoreboard", start: time(v: 0))
+        description: |-
+          SubmissionD1 -> Design-PoC A1 ///// 
+          SubmissionI1 -> Implementation A1 ///// 
+          SubmissionD2 -> Design-PoC A2 ///// 
+          SubmissionI2 -> Implementation A2 ///// 
+          SubmissionS1 -> Second Chance A1 ///// 
+          SubmissionS2 -> Second Chance A2
+        hide: dontHide
+        includeAll: true
+        label: SubmissionID
+        multi: true
+        name: submission_type
+        options: []
+        query:
+          group: influxdb
+          kind: DataQuery
+          spec:
+            query: |2-
+                import "influxdata/influxdb/schema"
+                schema.tagValues(bucket: "${bucket}", tag: "submission_type", predicate: (r) => r._measurement == "team_scoreboard", start: time(v: 0))
+          version: v0
+        refresh: onTimeRangeChanged
+        regex: ''
+        regexApplyTo: value
+        skipUrlSync: false
+        sort: disabled

@@ -68,6 +68,37 @@
             "version": "v0"
           }
         }
+      },
+      {
+        "kind": "AnnotationQuery",
+        "spec": {
+          "enable": true,
+          "hide": false,
+          "iconColor": "blue",
+          "mappings": {
+            "tags": {
+              "source": "field",
+              "value": "tags {_start=\"2026-10-30 13:51:30.118 +0000 UTC\", _stop=\"2027-01-22 19:51:30.118 +0000 UTC\"}"
+            },
+            "text": {
+              "source": "field",
+              "value": "text {_start=\"2026-10-30 13:51:30.118 +0000 UTC\", _stop=\"2027-01-22 19:51:30.118 +0000 UTC\"}"
+            }
+          },
+          "name": "Deadlines",
+          "query": {
+            "datasource": {
+              "name": "influxdb"
+            },
+            "group": "influxdb",
+            "kind": "DataQuery",
+            "spec": {
+              "query": "import \"array\"\n\narray.from(rows: [\n  {\n    _time: 2026-10-30T18:00:00+01:00,\n    text: \"Deadline POC-A1\",\n    tags: \"deadline,POC-A1\"\n  },\n  {\n    _time: 2026-11-20T18:00:00+01:00,\n    text: \"Deadline A1\",\n    tags: \"deadline,A1\"\n  },\n  {\n    _time: 2026-12-18T18:00:00+01:00,\n    text: \"Deadline POC-A2\",\n    tags: \"deadline,POC-A2\"\n  },\n  {\n    _time: 2027-01-22T18:00:00+01:00,\n    text: \"Deadline A2\",\n    tags: \"deadline,A2\"\n  }\n])\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)",
+              "refId": "Anno"
+            },
+            "version": "v0"
+          }
+        }
       }
     ],
     "cursorSync": "Crosshair",
@@ -550,7 +581,12 @@
                 "cellHeight": "sm",
                 "enablePagination": true,
                 "showHeader": true,
-                "sortBy": [],
+                "sortBy": [
+                  {
+                    "desc": true,
+                    "displayName": "First observed"
+                  }
+                ],
                 "zebraStriping": false
               }
             },
@@ -585,8 +621,8 @@
                 }
               ],
               "queryOptions": {
-                "timeCompare": "7d",
-                "timeFrom": "24h"
+                "timeCompare": "1w",
+                "timeFrom": "now-12h"
               },
               "transformations": []
             }
@@ -706,8 +742,8 @@
                 }
               ],
               "queryOptions": {
-                "timeCompare": "7d",
-                "timeFrom": "24h"
+                "timeCompare": "1w",
+                "timeFrom": "now-12h"
               },
               "transformations": []
             }
@@ -825,8 +861,8 @@
                 }
               ],
               "queryOptions": {
-                "timeCompare": "7d",
-                "timeFrom": "24h"
+                "timeCompare": "1w",
+                "timeFrom": "now-12h"
               },
               "transformations": []
             }
@@ -2420,7 +2456,7 @@
         "1d"
       ],
       "fiscalYearStartMonth": 0,
-      "from": "now-3h",
+      "from": "now-6h",
       "hideTimepicker": false,
       "timezone": "browser",
       "to": "now"
@@ -2466,12 +2502,8 @@
         "spec": {
           "allowCustomValue": false,
           "current": {
-            "text": [
-              "All"
-            ],
-            "value": [
-              "$__all"
-            ]
+            "text": "All",
+            "value": "$__all"
           },
           "definition": "import \"influxdata/influxdb/schema\"\nschema.tagValues(bucket: \"${bucket}\", tag: \"team_id\", predicate: (r) => r._measurement == \"team_scoreboard\", start: time(v: 0))",
           "description": "The team Identiefier on the testsystem",
