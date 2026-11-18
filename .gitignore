@@ -215,3 +215,4 @@ internal_notes.md
 backups/
 
 .DS_Store
+!scraper/tests/fixtures/*.html
