@@ -1,5 +1,5 @@
 beautifulsoup4==4.12.3
-influxdb-client==1.48.0
+influxdb-client==1.50.0
 lxml==6.1.0
 pandas==2.2.3
 pytest==9.0.3
