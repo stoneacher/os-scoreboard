@@ -2,7 +2,7 @@ name: sweb-scoreboard-monitor
 
 services:
   influxdb:
-    image: influxdb:2.9-alpine
+    image: influxdb:2.10-alpine
     restart: unless-stopped
     env_file:
       - .env
