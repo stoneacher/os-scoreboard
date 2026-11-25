@@ -65,7 +65,7 @@ jobs:
           provenance: mode=max
           sbom: true
 
-      - uses: sigstore/cosign-installer@v4.1.3
+      - uses: sigstore/cosign-installer@v4.1.4
         if: github.event_name != 'pull_request'
 
       - name: Sign image (keyless)
